@@ -19,7 +19,7 @@ if ($OldName -eq $NewName) {
 Write-Host "🔁 Renaming project: '$OldName' → '$NewName'"
 
 # File extensions to rename and patch
-$Extensions = @(".vcxproj", ".filters", ".vcxproj.user")
+$Extensions = @(".vcxproj", ".vcxproj.filters", ".vcxproj.user")
 
 # Rename files
 foreach ($Ext in $Extensions) {
