@@ -2,14 +2,38 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Update .vcxproj from addon.make",
+      "label": "projectUpdate",
       "type": "shell",
       "command": "powershell",
       "args": [
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        "update-vcxproj.ps1"
+        "projectUpdate.ps1"
+      ],
+      "options": {
+        "shell": {
+          "executable": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+        }
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "addonUpdate",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "addonUpdate.ps1"
       ],
       "options": {
         "shell": {
