@@ -1,28 +1,30 @@
 $ErrorActionPreference = "Stop"
 
-# 프로젝트 기본 경로
+# 1. project locations
 $projectDir = Get-Location
 $projectName = Split-Path $projectDir -Leaf
 $vcxprojPath = "$projectDir\$projectName.vcxproj"
 $filtersPath = "$projectDir\$projectName.vcxproj.filters"
 $addonFile = "$projectDir\addon.make"
-$oFRoot = "C:\oF_vs"  # openFrameworks 루트 디렉토리 경로
 $addonDest = "$projectDir\addons"
 
-# 1. addon 복사
+# ✅ 2. openFrameworks relative root location
+$oFRoot = Resolve-Path "$projectDir\..\..\.."  
+
+# 3. copy addons by addon.make
 if (Test-Path $addonFile) {
     $addons = Get-Content $addonFile | Where-Object { $_ -and -not $_.StartsWith("#") }
     foreach ($addon in $addons) {
         $src = Join-Path "$oFRoot\addons" $addon
         $dst = Join-Path $addonDest (Split-Path $addon -Leaf)
         if (-Not (Test-Path $dst)) {
-            Write-Output "Copying $addon..."
+            Write-Output "📦 Copying addon: $addon"
             Copy-Item -Recurse -Force $src $dst
         }
     }
 }
 
-# 2. .vcxproj 업데이트: ClInclude/ClCompile 추가
+# 4. update .vcxproj 
 [xml]$proj = Get-Content $vcxprojPath
 $ns = @{ "msb" = "http://schemas.microsoft.com/developer/msbuild/2003" }
 $projRoot = $proj.Project
@@ -53,9 +55,9 @@ foreach ($file in $allFiles) {
 }
 
 $proj.Save($vcxprojPath)
-Write-Output "Updated $vcxprojPath"
+Write-Output "✅ Updated $vcxprojPath"
 
-# 3. .filters 생성
+# 5. generate .filters 
 $filtersXml = @"
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
@@ -71,7 +73,6 @@ function Make-Filter($path) {
 }
 
 $filterMap = @{}
-$filters = New-Object System.Collections.Generic.List[string]
 $files = Get-ChildItem -Recurse -Include *.h,*.hpp,*.cpp,*.c -Path "$projectDir\src", "$projectDir\addons"
 
 foreach ($file in $files) {
@@ -97,4 +98,4 @@ foreach ($f in $filterMap.Keys) {
 $filtersXml += "  </ItemGroup>`n</Project>"
 
 Set-Content -Path $filtersPath -Value $filtersXml -Encoding UTF8
-Write-Output "Generated $filtersPath"
+Write-Output "✅ Generated $filtersPath"
