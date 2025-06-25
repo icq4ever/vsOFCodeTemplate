@@ -12,6 +12,19 @@ $cppPropsPath = Join-Path $projectDir ".vscode\c_cpp_properties.json"
 # Determine openFrameworks root
 $oFRoot = Resolve-Path "$projectDir\..\..\.."
 
+# 0. Clean up outdated addons
+if (Test-Path $addonDest) {
+    $existingAddons = Get-ChildItem -Directory $addonDest | Select-Object -ExpandProperty Name
+    $usedAddons = Get-Content $addonFile | Where-Object { $_ -and -not $_.StartsWith("#") } | ForEach-Object { Split-Path $_ -Leaf }
+
+    $addonsToRemove = $existingAddons | Where-Object { $_ -notin $usedAddons }
+    foreach ($unused in $addonsToRemove) {
+        $unusedPath = Join-Path $addonDest $unused
+        Write-Host "🧹 Removing unused addon: $unused"
+        Remove-Item -Recurse -Force $unusedPath
+    }
+}
+
 # 1. Copy addons
 if (Test-Path $addonFile) {
     $addons = Get-Content $addonFile | Where-Object { $_ -and -not $_.StartsWith("#") }
