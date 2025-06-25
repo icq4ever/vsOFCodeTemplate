@@ -1,0 +1,46 @@
+# Ignore everything inside .vscode
+.vscode/*
+
+# But keep shared build settings
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/c_cpp_properties.json
+
+# VS / MSBuild intermediate & user files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.VC.opendb
+
+# Build output directories
+bin/
+obj/
+build/
+
+# Visual Studio cache
+ipch/
+*.aps
+*.ncb
+*.opendb
+
+# CMake cache
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# macOS specific (for cross-platform use)
+.DS_Store
+
+# Windows thumbnail cache
+Thumbs.db
+
+# Log files
+*.log
+
+# Executables (optional, you can include Debug/Release folders separately)
+*.exe
+*.pdb
+*.ilk
