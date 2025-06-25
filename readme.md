@@ -25,3 +25,40 @@ this template is include :
 3. run `projectUpdate` task
 4. when addon added on `addons.make`, run `addonUpdate` task. addon should already clone to `{OF_ROOT}/addons`
 5. can build project with with `tasks`
+
+## tip for WSL2
+add this alias on `.bashrc` or `.zshrc`.<br/>
+you can generate `$ pg newProject` command on linux shell, anywhere you want.<br/>
+> **mind that you should replace `local templateDir` to your template location**
+```
+pg() {
+  local newName="$1"
+  local destDir="$(pwd)/$newName"
+  local templateDir="/mnt/c/oF_vs/apps/myApps/vsOFCodeExample"
+
+  if [ -z "$newName" ]; then
+    echo "❌ Usage: pg <project-name>"
+    return 1
+  fi
+
+  if [ -d "$destDir" ]; then
+    echo "❌ '$destDir' already exists"
+    return 1
+  fi
+
+  # rsync with exclusion rules
+  rsync -av --exclude='bin/*.exe' \
+            --exclude='bin/*.dll' \
+            --exclude='obj/' \
+            --exclude='.vs/' \
+            --exclude='*.user' \
+            --exclude='*.suo' \
+            --exclude='.vscode/ipch/' \
+            "$templateDir/" "$destDir/"
+
+  cd "$destDir" && \
+  powershell.exe -ExecutionPolicy Bypass -File "$(wslpath -w "$destDir/projectUpdate.ps1")"
+
+  code . & disown
+}
+```
