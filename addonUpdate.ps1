@@ -1,22 +1,22 @@
 $ErrorActionPreference = "Stop"
 
-# Project information
+# Get current project info
 $projectDir = Get-Location
 $projectName = Split-Path $projectDir -Leaf
-$vcxprojPath = "$projectDir\$projectName.vcxproj"
-$filtersPath = "$projectDir\$projectName.vcxproj.filters"
-$addonFile = "$projectDir\addon.make"
-$addonDest = "$projectDir\addons"
-$cppPropsPath = "$projectDir\.vscode\c_cpp_properties.json"
+$vcxprojPath = Join-Path $projectDir "$projectName.vcxproj"
+$filtersPath = Join-Path $projectDir "$projectName.vcxproj.filters"
+$addonFile = Join-Path $projectDir "addon.make"
+$addonDest = Join-Path $projectDir "addons"
+$cppPropsPath = Join-Path $projectDir ".vscode\c_cpp_properties.json"
 
-# Find openFrameworks root relative to this project
+# Determine openFrameworks root
 $oFRoot = Resolve-Path "$projectDir\..\..\.."
 
-# Step 1: Copy addons
+# 1. Copy addons
 if (Test-Path $addonFile) {
     $addons = Get-Content $addonFile | Where-Object { $_ -and -not $_.StartsWith("#") }
     foreach ($addon in $addons) {
-        $src = Join-Path "$oFRoot\addons" $addon
+        $src = Join-Path $oFRoot "addons\$addon"
         $dst = Join-Path $addonDest (Split-Path $addon -Leaf)
         if (-not (Test-Path $dst)) {
             Write-Host "📦 Copying addon: $addon"
@@ -25,91 +25,85 @@ if (Test-Path $addonFile) {
     }
 }
 
-# Step 2: Update .vcxproj with ClInclude / ClCompile
+# 2. Update .vcxproj (remove old, add new)
 [xml]$proj = Get-Content $vcxprojPath
 $projRoot = $proj.Project
-$nsMgr = New-Object System.Xml.XmlNamespaceManager($proj.NameTable)
-$nsMgr.AddNamespace("ns", $proj.DocumentElement.NamespaceURI)
 
-function Add-ItemGroupEntry {
-    param ($itemType, $relativePath)
-    $itemGroup = $proj.CreateElement("ItemGroup", $proj.DocumentElement.NamespaceURI)
-    $node = $proj.CreateElement($itemType, $proj.DocumentElement.NamespaceURI)
-    $node.SetAttribute("Include", $relativePath)
-    $itemGroup.AppendChild($node) | Out-Null
-    $projRoot.AppendChild($itemGroup) | Out-Null
+# Remove previous ClInclude/ClCompile ItemGroups
+$nsMgr = New-Object System.Xml.XmlNamespaceManager($proj.NameTable)
+$nsMgr.AddNamespace("ns", $projRoot.NamespaceURI)
+
+$oldNodes = $projRoot.SelectNodes("//ns:ItemGroup[ns:ClInclude or ns:ClCompile]", $nsMgr)
+foreach ($node in $oldNodes) {
+    $projRoot.RemoveChild($node) | Out-Null
 }
 
-$existingIncludes = $projRoot.SelectNodes("//ns:ClInclude", $nsMgr) | ForEach-Object { $_.Include }
-$existingCompiles = $projRoot.SelectNodes("//ns:ClCompile", $nsMgr) | ForEach-Object { $_.Include }
+# Add new files from src and addons
+function Add-ItemGroupEntry {
+    param($type, $relativePath)
+    $group = $proj.CreateElement("ItemGroup", $projRoot.NamespaceURI)
+    $item = $proj.CreateElement($type, $projRoot.NamespaceURI)
+    $item.SetAttribute("Include", $relativePath)
+    $group.AppendChild($item) | Out-Null
+    $projRoot.AppendChild($group) | Out-Null
+}
 
-$allFiles = Get-ChildItem -Recurse -Include *.h,*.hpp,*.cpp,*.c -Path "$projectDir\src", "$projectDir\addons"
-
-foreach ($file in $allFiles) {
+$srcFiles = Get-ChildItem -Recurse -Include *.h,*.hpp,*.cpp,*.c -Path "$projectDir\src", "$projectDir\addons"
+foreach ($file in $srcFiles) {
     $relPath = $file.FullName.Replace("$projectDir\", "").Replace("\", "/")
     if ($file.Extension -match "\.h|\.hpp") {
-        if (-not $existingIncludes.Contains($relPath)) {
-            Add-ItemGroupEntry "ClInclude" $relPath
-        }
-    } elseif ($file.Extension -match "\.cpp|\.c") {
-        if (-not $existingCompiles.Contains($relPath)) {
-            Add-ItemGroupEntry "ClCompile" $relPath
-        }
+        Add-ItemGroupEntry -type "ClInclude" -relativePath $relPath
+    } else {
+        Add-ItemGroupEntry -type "ClCompile" -relativePath $relPath
     }
 }
 
 $proj.Save($vcxprojPath)
 Write-Host "✅ Updated $vcxprojPath"
 
-# Step 3: Generate .filters
-function Make-Filter($path) {
-    $parts = $path -split "[\\/]"
+# 3. Generate .filters file
+function Make-Filter {
+    param($path)
+    $parts = $path -split '[\\/]', 0, 'SimpleMatch'
     if ($parts.Length -gt 1) {
         return ($parts[0..($parts.Length - 2)] -join '\')
-    } else {
-        return ""
     }
+    return ""
 }
 
-$filtersXml = @()
-$filtersXml += '<?xml version="1.0" encoding="utf-8"?>'
-$filtersXml += '<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'
-$filtersXml += '  <ItemGroup>'
-
+$filtersXml = "<Project ToolsVersion=`"4.0`" xmlns=`"http://schemas.microsoft.com/developer/msbuild/2003`">`n"
+$filtersXml += "  <ItemGroup>`n"
 $filterMap = @{}
-foreach ($file in $allFiles) {
+foreach ($file in $srcFiles) {
     $relPath = $file.FullName.Replace("$projectDir\", "").Replace("\", "/")
     $filter = Make-Filter $relPath
     $type = if ($file.Extension -match "\.h|\.hpp") { "ClInclude" } else { "ClCompile" }
-    $filtersXml += "    <$type Include='" + $relPath + "'>"
+    $escapedPath = $relPath -replace '&', '&amp;' -replace '<', '&lt;' -replace '>', '&gt;'
+
+    $filtersXml += '    <' + $type + ' Include="' + $escapedPath + '">' + "`n"
     if ($filter -ne "") {
-        $filtersXml += "      <Filter>" + $filter + "</Filter>"
+        $filtersXml += "      <Filter>$filter</Filter>`n"
         $filterMap[$filter] = $true
     }
-    $filtersXml += "    </$type>"
+    $filtersXml += '    </' + $type + '>' + "`n"
 }
-
-$filtersXml += '  </ItemGroup>'
-$filtersXml += '  <ItemGroup>'
-
+$filtersXml += "  </ItemGroup>`n  <ItemGroup>`n"
 foreach ($f in $filterMap.Keys) {
-    $guid = [guid]::NewGuid().ToString()
-    $filtersXml += "    <Filter Include='" + $f + "'>"
-    $filtersXml += "      <UniqueIdentifier>{" + $guid + "}</UniqueIdentifier>"
-    $filtersXml += "    </Filter>"
+    $filtersXml += '    <Filter Include="' + $f + '">' + "`n"
+    $filtersXml += "      <UniqueIdentifier>{$(New-Guid)}</UniqueIdentifier>`n"
+    $filtersXml += "    </Filter>`n"
 }
+$filtersXml += "  </ItemGroup>`n</Project>"
 
-$filtersXml += '  </ItemGroup>'
-$filtersXml += '</Project>'
-
-$filtersXml -join "`r`n" | Set-Content -Encoding UTF8 $filtersPath
+Set-Content -Path $filtersPath -Value $filtersXml -Encoding UTF8
 Write-Host "✅ Generated $filtersPath"
 
-# Step 4: Update c_cpp_properties.json for IntelliSense
+# 4. Update c_cpp_properties.json for includePath
 $includePaths = @(
-    "$oFRoot/libs/openFrameworks/**",
-    "$projectDir/src",
-    "$projectDir/addons/**"
+    "src",
+    "addons/*/src",
+    "../../libs/**/include",
+    "../../addons/**/src"
 )
 
 $cppJson = @{
