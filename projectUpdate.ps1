@@ -33,6 +33,6 @@ foreach ($Ext in $Extensions) {
     $Target = ".\$NewName$Ext"
     if (Test-Path $Target) {
         (Get-Content $Target) -replace $OldName, $NewName | Set-Content $Target
-        Write-Host "📝 replace internal sucessfully : $Target"
+        Write-Host "📝 replace internal successfully : $Target"
     }
 }
