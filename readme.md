@@ -1,8 +1,8 @@
-# openFrameworks template for vscode with msbuild
+# openFrameworks empty project template for vscode with msbuild
 
 this template is include :
 - build/run/update addon tasks for vscode 
-- launching for debug/release app
+- launching debug/release app
 - read addon.make and update addon, vs filter update using powershell script
 
 # why made this ?
@@ -15,5 +15,8 @@ this template is include :
 - vscode
 
 # how to use it
-## build 
-in visual studio code, `ctrl + shift + P` and `Tasks: run task`. 
+1. clone this repo : `{OF_ROOT}/apps/myApps/oFVSCodeExample`
+2. copy to new Folder
+3. run `projectUpdate` task
+4. when addon added on `addons.make`, run `addonUpdate` task. addon should already clone to `{OF_ROOT}/addons`
+5. can build with task
