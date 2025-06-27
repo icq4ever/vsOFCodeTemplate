@@ -29,7 +29,7 @@ ipch/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
-Makefile
+#Makefile
 
 # macOS specific (for cross-platform use)
 .DS_Store
