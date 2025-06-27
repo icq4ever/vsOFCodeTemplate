@@ -31,7 +31,7 @@ this template is include :
 ### for WSL2
 add this alias on `.bashrc` or `.zshrc`.<br/>
 you can generate `$ pg newProjectName` on linux shell, anywhere you want.<br/>
-> **mind that you should replace `local templateDir` to your template location**
+> **mind that you should replace `local templateDir` to your template location**.<br/>
 > project location should be `{OF_ROOT}/{ANY}/{ANY}/{NEW_PROJECTNAME}`
 ```
 pg() {
@@ -74,8 +74,8 @@ pg() {
 ```
 - this script doing ...
   - clone folder and rename folder 
-  - .git removed
-  - readme.md also reset with `newProjectName`
+  - reset git info
+  - readme.md will be resets
 
 ### broken characters on windows terminal? (like Korean Windows)
 - `제어판` / `국가 및 지역` / `관리자 탭` / 시스템 로케일 변경 에 들어간 뒤
