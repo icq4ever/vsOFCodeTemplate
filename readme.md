@@ -26,7 +26,9 @@ this template is include :
 4. when addon added on `addons.make`, run `addonUpdate` task. addon should already clone to `{OF_ROOT}/addons`
 5. can build project with with `tasks`
 
-## tip for WSL2
+## extra tip
+
+### for WSL2
 add this alias on `.bashrc` or `.zshrc`.<br/>
 you can generate `$ pg newProject` command on linux shell, anywhere you want.<br/>
 > **mind that you should replace `local templateDir` to your template location**
@@ -62,3 +64,7 @@ pg() {
   code . & disown
 }
 ```
+
+### broken characters on windows terminal? (like Korean Windows)
+- `제어판` / `국가 및 지역` / `관리자 탭` / 시스템 로케일 변경 에 들어간 뒤
+  - "`세계 언어 지원을 위해 Unicode UTF-8 사용(BETA)` 체크 후 재부팅 
