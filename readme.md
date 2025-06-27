@@ -30,8 +30,9 @@ this template is include :
 
 ### for WSL2
 add this alias on `.bashrc` or `.zshrc`.<br/>
-you can generate `$ pg newProject` command on linux shell, anywhere you want.<br/>
+you can generate `$ pg newProjectName` on linux shell, anywhere you want.<br/>
 > **mind that you should replace `local templateDir` to your template location**
+> project location should be `{OF_ROOT}/{ANY}/{ANY}/{NEW_PROJECTNAME}`
 ```
 pg() {
   local newName="$1"
@@ -48,7 +49,7 @@ pg() {
     return 1
   fi
 
-  # rsync with exclusion rules
+  # rsync with exclusion rules, including .git
   rsync -av --exclude='bin/*.exe' \
             --exclude='bin/*.dll' \
             --exclude='obj/' \
@@ -56,14 +57,25 @@ pg() {
             --exclude='*.user' \
             --exclude='*.suo' \
             --exclude='.vscode/ipch/' \
+            --exclude='.git/' \
             "$templateDir/" "$destDir/"
 
+  # create README.md with project name as heading
+  echo "# $newName" > "$destDir/README.md"
+
+  # run PowerShell project update
   cd "$destDir" && \
   powershell.exe -ExecutionPolicy Bypass -File "$(wslpath -w "$destDir/projectUpdate.ps1")"
 
+  # open in VSCode
   code . & disown
 }
+
 ```
+- this script doing ...
+  - clone folder and rename folder 
+  - .git removed
+  - readme.md also reset with `newProjectName`
 
 ### broken characters on windows terminal? (like Korean Windows)
 - `제어판` / `국가 및 지역` / `관리자 탭` / 시스템 로케일 변경 에 들어간 뒤
