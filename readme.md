@@ -1,4 +1,4 @@
-# openFrameworks empty project template for vscode with msbuild
+# openFrameworks empty project template for vscode support msbuild on windows
 
 this template is include :
 - build/run/update addon tasks for vscode 
@@ -14,10 +14,14 @@ this template is include :
 - support vcxproj update
 - addon update (copy from `{OF_ROOT}/addon` to local `addon`)
 - addonUpdate / projectUpdate using powershell script
+- mac/linux still can build, run by `make Debug`, `make Debug`, `make RunDebug`, `make RunRelease` in terminal
 
-## dependencies
+## dependencies 
+### windows
 - microsoft visual studio community 2022 (v143)
-- vscode
+
+### mac
+- xcode command line tool
 
 ## how to use it
 1. clone this repo : `{OF_ROOT}/apps/myApps/oFVSCodeExample`
