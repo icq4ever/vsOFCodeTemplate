@@ -96,3 +96,78 @@ Write-Host ""
 Write-Host "✅ Project rename complete."
 Write-Host "   Old name: $OldName"
 Write-Host "   New name: $NewName"
+Write-Host ""
+
+# ============================================================================
+# Auto-update vcxproj with source files from src/ folder
+# ============================================================================
+Write-Host "🔍 Scanning src/ folder for source files..."
+
+$vcxprojPath = ".\$NewName.vcxproj"
+if (-not (Test-Path $vcxprojPath)) {
+    Write-Host "⚠️  vcxproj file not found. Skipping auto-update."
+    exit 0
+}
+
+# Scan for .cpp and .h files in src/ folder (recursively)
+$cppFiles = Get-ChildItem -Path "src" -Filter "*.cpp" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName.Replace((Get-Location).Path + "\", "").Replace("\", "/") }
+$hFiles = Get-ChildItem -Path "src" -Filter "*.h" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName.Replace((Get-Location).Path + "\", "").Replace("\", "/") }
+
+if ($cppFiles.Count -eq 0 -and $hFiles.Count -eq 0) {
+    Write-Host "⚠️  No source files found in src/ folder."
+    exit 0
+}
+
+# Load vcxproj as XML
+[xml]$vcxproj = Get-Content $vcxprojPath
+
+# Find or create ItemGroup for ClCompile
+$compileGroup = $vcxproj.Project.ItemGroup | Where-Object { $_.ClCompile -ne $null } | Select-Object -First 1
+if (-not $compileGroup) {
+    $compileGroup = $vcxproj.CreateElement("ItemGroup", $vcxproj.Project.NamespaceURI)
+    $vcxproj.Project.AppendChild($compileGroup) | Out-Null
+}
+
+# Find or create ItemGroup for ClInclude
+$includeGroup = $vcxproj.Project.ItemGroup | Where-Object { $_.ClInclude -ne $null } | Select-Object -First 1
+if (-not $includeGroup) {
+    $includeGroup = $vcxproj.CreateElement("ItemGroup", $vcxproj.Project.NamespaceURI)
+    $vcxproj.Project.AppendChild($includeGroup) | Out-Null
+}
+
+# Get existing files in vcxproj
+$existingCppFiles = @($compileGroup.ClCompile | ForEach-Object { $_.Include })
+$existingHFiles = @($includeGroup.ClInclude | ForEach-Object { $_.Include })
+
+# Add new .cpp files
+$addedCpp = 0
+foreach ($file in $cppFiles) {
+    if ($existingCppFiles -notcontains $file) {
+        $newNode = $vcxproj.CreateElement("ClCompile", $vcxproj.Project.NamespaceURI)
+        $newNode.SetAttribute("Include", $file)
+        $compileGroup.AppendChild($newNode) | Out-Null
+        Write-Host "  ✔️ Added: $file"
+        $addedCpp++
+    }
+}
+
+# Add new .h files
+$addedH = 0
+foreach ($file in $hFiles) {
+    if ($existingHFiles -notcontains $file) {
+        $newNode = $vcxproj.CreateElement("ClInclude", $vcxproj.Project.NamespaceURI)
+        $newNode.SetAttribute("Include", $file)
+        $includeGroup.AppendChild($newNode) | Out-Null
+        Write-Host "  ✔️ Added: $file"
+        $addedH++
+    }
+}
+
+# Save if changes were made
+if ($addedCpp -gt 0 -or $addedH -gt 0) {
+    $vcxproj.Save($vcxprojPath)
+    Write-Host ""
+    Write-Host "✅ vcxproj updated: $addedCpp .cpp files, $addedH .h files added."
+} else {
+    Write-Host "✅ All source files already in vcxproj. No changes needed."
+}

@@ -14,6 +14,9 @@ this template is include :
 
 ## feature
 - support vcxproj update (Windows)
+- **auto-scan and add new source files** to vcxproj (Windows only)
+  - when you run `projectUpdate.ps1`, it scans `src/` folder and adds all `.cpp` and `.h` files to vcxproj
+  - macOS/Linux don't need this - Makefile auto-detects source files
 - addon update (copy from `{OF_ROOT}/addons` to local `addons`)
 - addonUpdate / projectUpdate scripts:
   - **Windows**: `addonUpdate.ps1`, `projectUpdate.ps1` (PowerShell)
@@ -54,9 +57,11 @@ this template is include :
 1. clone this repo : `{OF_ROOT}/apps/myApps/vsOFCodeTemplate`
 2. copy to new folder
 3. run `projectUpdate.ps1` (PowerShell) or use VSCode task
-4. when addon added on `addons.make`, run `addonUpdate.ps1` or use VSCode task
+   - this will rename project files and **auto-add all source files** from `src/` to vcxproj
+4. when you add new `.cpp` or `.h` files, just run `projectUpdate.ps1` again to update vcxproj
+5. when addon added on `addons.make`, run `addonUpdate.ps1` or use VSCode task
    - addon should already be cloned to `{OF_ROOT}/addons`
-5. build project with VSCode tasks
+6. build project with VSCode tasks
 
 ### macOS/Linux
 1. clone this repo : `{OF_ROOT}/apps/myApps/vsOFCodeTemplate`
