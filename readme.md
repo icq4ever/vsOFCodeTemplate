@@ -174,6 +174,8 @@ pg() {
     echo "❌ Error: projectUpdate.sh failed"
     return 1
   fi
+
+  code .
 }
 ```
 
