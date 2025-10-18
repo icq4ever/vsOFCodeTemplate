@@ -41,7 +41,7 @@ this template is include :
 ## how to use it
 
 ### Windows
-1. clone this repo : `{OF_ROOT}/apps/myApps/vsOFCodeExample`
+1. clone this repo : `{OF_ROOT}/apps/myApps/vsOFCodeTemplate`
 2. copy to new folder
 3. run `projectUpdate.ps1` (PowerShell) or use VSCode task
 4. when addon added on `addons.make`, run `addonUpdate.ps1` or use VSCode task
@@ -49,7 +49,7 @@ this template is include :
 5. build project with VSCode tasks
 
 ### macOS/Linux
-1. clone this repo : `{OF_ROOT}/apps/myApps/vsOFCodeExample`
+1. clone this repo : `{OF_ROOT}/apps/myApps/vsOFCodeTemplate`
 2. copy to new folder
 3. run `./projectUpdate.sh` in terminal
 4. when addon added on `addons.make`, run `./addonUpdate.sh`
@@ -71,7 +71,7 @@ Add to `.bashrc` or `.zshrc`:
 pg() {
   local newName="$1"
   local destDir="$(pwd)/$newName"
-  local templateDir="/mnt/c/oF_vs/apps/myApps/vsOFCodeExample"
+  local templateDir="/mnt/c/oF_vs/apps/myApps/vsOFCodeTemplate"
 
   if [ -z "$newName" ]; then
     echo "❌ Usage: pg <project-name>"
@@ -117,7 +117,7 @@ Add to `.bashrc` or `.zshrc`:
 pg() {
   local newName="$1"
   local destDir="$(pwd)/$newName"
-  local templateDir="$HOME/oF/apps/myApps/vsOFCodeExample"  # adjust this path
+  local templateDir="$HOME/oF/apps/myApps/vsOFCodeTemplate"  # adjust this path
 
   if [ -z "$newName" ]; then
     echo "❌ Usage: pg <project-name>"
