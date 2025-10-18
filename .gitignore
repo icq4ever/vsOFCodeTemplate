@@ -5,7 +5,10 @@
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/c_cpp_properties.json
-!.vscode/settings.json
+
+# Ignore user-specific settings (OS-specific configuration selection)
+.vscode/settings.json
+
 # VS / MSBuild intermediate & user files
 *.suo
 *.user
