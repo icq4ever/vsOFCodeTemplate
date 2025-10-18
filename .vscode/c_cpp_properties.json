@@ -34,6 +34,21 @@
       "cStandard": "c17",
       "cppStandard": "c++17",
       "intelliSenseMode": "macos-clang-x64"
+    },
+    {
+      "name": "Linux",
+      "includePath": [
+        "${workspaceFolder}/src/**",
+        "${workspaceFolder}/addons/*/src",
+        "${workspaceFolder}/addons/*/include",
+        "${workspaceFolder}/../../../libs/openFrameworks/**",
+        "${workspaceFolder}/../../../libs/**/include"
+      ],
+      "defines": [],
+      "compilerPath": "/usr/bin/g++",
+      "cStandard": "c17",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "linux-gcc-x64"
     }
   ]
 }
