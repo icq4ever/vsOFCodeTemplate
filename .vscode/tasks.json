@@ -52,12 +52,17 @@
     {
       "label": "build Release",
       "type": "shell",
-      "command": "/mnt/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe",
+      "command": "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe",
       "args": [
-        "${workspaceFolderBasename}.vcxproj",
+        "${workspaceFolder}/${workspaceFolderBasename}.vcxproj",
         "/p:Configuration=Release",
         "/p:Platform=x64"
       ],
+      "options": {
+        "shell": {
+          "executable": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+        }
+      },
       "group": {
         "kind": "build",
         "isDefault": true
@@ -67,12 +72,17 @@
     {
       "label": "build Debug",
       "type": "shell",
-      "command": "/mnt/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe",
+      "command": "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe",
       "args": [
-        "${workspaceFolderBasename}.vcxproj",
+        "${workspaceFolder}/${workspaceFolderBasename}.vcxproj",
         "/p:Configuration=Debug",
         "/p:Platform=x64"
       ],
+      "options": {
+        "shell": {
+          "executable": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+        }
+      },
       "group": {
         "kind": "build",
         "isDefault": false
@@ -82,13 +92,18 @@
     {
       "label": "clean",
       "type": "shell",
-      "command": "/mnt/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe",
+      "command": "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe",
       "args": [
-        "${workspaceFolderBasename}.vcxproj",
+        "${workspaceFolder}/${workspaceFolderBasename}.vcxproj",
         "/t:Clean",
         "/p:Configuration=Release",
         "/p:Platform=x64"
       ],
+      "options": {
+        "shell": {
+          "executable": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+        }
+      },
       "group": {
         "kind": "build",
         "isDefault": false
@@ -97,13 +112,18 @@
     {
       "label": "rebuild",
       "type": "shell",
-      "command": "/mnt/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe",
+      "command": "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe",
       "args": [
-        "${workspaceFolderBasename}.vcxproj",
+        "${workspaceFolder}/${workspaceFolderBasename}.vcxproj",
         "/t:Rebuild",
         "/p:Configuration=Release",
         "/p:Platform=x64"
       ],
+      "options": {
+        "shell": {
+          "executable": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+        }
+      },
       "group": {
         "kind": "build",
         "isDefault": false
@@ -112,7 +132,7 @@
     {
       "label": "run Release",
       "type": "shell",
-      "command": "./bin/${workspaceFolderBasename}.exe",
+      "command": "${workspaceFolder}/bin/${workspaceFolderBasename}.exe",
       "group": {
         "kind": "test",
         "isDefault": true
@@ -122,7 +142,7 @@
     {
       "label": "run Debug",
       "type": "shell",
-      "command": "./bin/${workspaceFolderBasename}_debug.exe",
+      "command": "${workspaceFolder}/bin/${workspaceFolderBasename}_debug.exe",
       "group": {
         "kind": "test",
         "isDefault": false

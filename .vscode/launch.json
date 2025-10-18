@@ -17,7 +17,7 @@
       "name": "Launch Debug App",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/bin/${workspaceFolderBasename}Debug.exe",
+      "program": "${workspaceFolder}/bin/${workspaceFolderBasename}_debug.exe",
       "args": [],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
