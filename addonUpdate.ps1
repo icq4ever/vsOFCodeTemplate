@@ -5,7 +5,7 @@ $projectDir = Get-Location
 $projectName = Split-Path $projectDir -Leaf
 $vcxprojPath = Join-Path $projectDir "$projectName.vcxproj"
 $filtersPath = Join-Path $projectDir "$projectName.vcxproj.filters"
-$addonFile = Join-Path $projectDir "addon.make"
+$addonFile = Join-Path $projectDir "addons.make"
 $addonDest = Join-Path $projectDir "addons"
 $cppPropsPath = Join-Path $projectDir ".vscode\c_cpp_properties.json"
 
