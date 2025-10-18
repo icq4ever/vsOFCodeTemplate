@@ -4,7 +4,7 @@ set -e
 # Get current folder name (new project name)
 NEW_NAME="$(basename "$(pwd)")"
 
-# Find existing .xcodeproj or Makefile to detect old name
+# Find existing project files to detect old name
 OLD_NAME=""
 
 # Try to find old name from various sources
@@ -12,6 +12,10 @@ if ls *.xcodeproj 2>/dev/null | grep -q .; then
     # macOS: find .xcodeproj
     OLD_PROJ="$(ls *.xcodeproj | head -1)"
     OLD_NAME="$(basename "$OLD_PROJ" .xcodeproj)"
+elif ls *.vcxproj 2>/dev/null | grep -q .; then
+    # Windows/Visual Studio: find .vcxproj
+    OLD_PROJ="$(ls *.vcxproj | head -1)"
+    OLD_NAME="$(basename "$OLD_PROJ" .vcxproj)"
 elif [ -f "Makefile" ]; then
     # Linux/macOS: try to find project name in Makefile
     OLD_NAME="$(grep -m 1 "APPNAME" Makefile 2>/dev/null | sed 's/.*=\s*//' || echo "")"
@@ -20,7 +24,7 @@ elif [ -f "Makefile" ]; then
         OLD_NAME="$NEW_NAME"
     fi
 else
-    echo "⚠️  No .xcodeproj or Makefile found. Creating new Makefile..."
+    echo "⚠️  No project files found (.xcodeproj, .vcxproj, or Makefile)."
     OLD_NAME="$NEW_NAME"
 fi
 
@@ -45,6 +49,38 @@ if [ -d "${OLD_NAME}.xcodeproj" ]; then
         fi
         echo "📝 Updated references inside: project.pbxproj"
     fi
+fi
+
+# Windows/Visual Studio: Rename .vcxproj and .sln
+if [ -f "${OLD_NAME}.vcxproj" ]; then
+    mv "${OLD_NAME}.vcxproj" "${NEW_NAME}.vcxproj"
+    echo "✔️ Renamed: ${OLD_NAME}.vcxproj → ${NEW_NAME}.vcxproj"
+
+    # Update RootNamespace inside .vcxproj
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s/<RootNamespace>${OLD_NAME}<\/RootNamespace>/<RootNamespace>${NEW_NAME}<\/RootNamespace>/g" "${NEW_NAME}.vcxproj"
+    else
+        sed -i "s/<RootNamespace>${OLD_NAME}<\/RootNamespace>/<RootNamespace>${NEW_NAME}<\/RootNamespace>/g" "${NEW_NAME}.vcxproj"
+    fi
+    echo "📝 Updated RootNamespace in: ${NEW_NAME}.vcxproj"
+fi
+
+if [ -f "${OLD_NAME}.vcxproj.filters" ]; then
+    mv "${OLD_NAME}.vcxproj.filters" "${NEW_NAME}.vcxproj.filters"
+    echo "✔️ Renamed: ${OLD_NAME}.vcxproj.filters → ${NEW_NAME}.vcxproj.filters"
+fi
+
+if [ -f "${OLD_NAME}.sln" ]; then
+    mv "${OLD_NAME}.sln" "${NEW_NAME}.sln"
+    echo "✔️ Renamed: ${OLD_NAME}.sln → ${NEW_NAME}.sln"
+
+    # Update project references inside .sln
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s/${OLD_NAME}/${NEW_NAME}/g" "${NEW_NAME}.sln"
+    else
+        sed -i "s/${OLD_NAME}/${NEW_NAME}/g" "${NEW_NAME}.sln"
+    fi
+    echo "📝 Updated references inside: ${NEW_NAME}.sln"
 fi
 
 # Update Makefile if exists
