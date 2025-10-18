@@ -1,7 +1,7 @@
 # openFrameworks empty project template for vscode support msbuild on windows
 
 this template is include :
-- build/run/update addon tasks for vscode 
+- build/run/update addon tasks for vscode on windows
 - launching debug/release app
 - read addon.make and update addon, vs filter update using powershell script
 
@@ -17,6 +17,8 @@ this template is include :
 - mac/linux still can build, run by `make Debug`, `make Debug`, `make RunDebug`, `make RunRelease` in terminal
 
 ## dependencies 
+### vscode
+- WSL extension
 ### windows
 - microsoft visual studio community 2022 (v143)
 
@@ -75,11 +77,15 @@ pg() {
   cmd.exe /c "code $(wslpath -w "$destDir")" & disown
 }
 
+# PowerShell script aliases
+alias psh='powershell.exe -ExecutionPolicy Bypass -File'
+
 ```
 - this script doing ...
   - clone folder and rename folder 
   - reset git info
   - readme.md will be resets
+  - run ps1 script with alias (addonUpdate.ps1/projectUpdate.ps1)
 
 ### broken characters on windows terminal? (like Korean Windows)
 - `제어판` / `국가 및 지역` / `관리자 탭` / 시스템 로케일 변경 에 들어간 뒤
