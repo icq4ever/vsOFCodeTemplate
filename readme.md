@@ -71,8 +71,8 @@ pg() {
   cd "$destDir" && \
   powershell.exe -ExecutionPolicy Bypass -File "$(wslpath -w "$destDir/projectUpdate.ps1")"
 
-  # open in VSCode
-  code . & disown
+  # open in VSCode, in windows!
+  code.exe . & disown
 }
 
 ```
