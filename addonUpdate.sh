@@ -21,7 +21,7 @@ if [ -d "$ADDON_DEST" ]; then
     if [ -f "$ADDON_FILE" ]; then
         # Get list of used addons
         USED_ADDONS=()
-        while IFS= read -r line; do
+        while IFS= read -r line || [[ -n "$line" ]]; do
             # Skip empty lines and comments
             if [[ -n "$line" && ! "$line" =~ ^# ]]; then
                 ADDON_NAME="$(basename "$line")"
@@ -46,7 +46,7 @@ fi
 
 # 1. Copy addons
 if [ -f "$ADDON_FILE" ]; then
-    while IFS= read -r addon; do
+    while IFS= read -r addon || [[ -n "$addon" ]]; do
         # Skip empty lines and comments
         if [[ -n "$addon" && ! "$addon" =~ ^# ]]; then
             SRC="$OF_ROOT/addons/$addon"
@@ -56,7 +56,7 @@ if [ -f "$ADDON_FILE" ]; then
             if [ ! -d "$DST" ]; then
                 if [ -d "$SRC" ]; then
                     echo "📦 Copying addon: $addon"
-                    cp -R "$SRC" "$DST"
+                    rsync -a --delete "$SRC/" "$DST/"
                 else
                     echo "⚠️  Warning: Addon not found: $SRC"
                 fi
