@@ -28,12 +28,22 @@ this template is include :
 ### common
 - rsync
 ### windows
-- microsoft visual studio community 2022 (v143)- rsync (WSL)
+- microsoft visual studio community 2022 (v143)
+- rsync (WSL)
 - **⚠️ REQUIRED**: UTF-8 system locale setting
   - Go to `제어판` (Control Panel) → `국가 및 지역` (Region) → `관리자 탭` (Administrative tab) → `시스템 로케일 변경` (Change system locale)
   - Check "`세계 언어 지원을 위해 Unicode UTF-8 사용(BETA)`" (Use Unicode UTF-8 for worldwide language support)
   - Reboot required
   - **Without this setting, you will encounter encoding errors in PowerShell scripts**
+- **⚠️ REQUIRED**: Git configuration for cross-platform line endings
+  - **When installing Git on Windows**, ensure the following settings:
+    - Select: **"Checkout as-is, commit Unix-style line endings"**
+    - OR configure manually after installation:
+      ```bash
+      git config --global core.autocrlf input
+      ```
+  - This prevents CRLF line ending issues when working with shell scripts
+  - All scripts in this template use LF (Unix-style) line endings for cross-platform compatibility
 
 ### mac
 - xcode command line tool
