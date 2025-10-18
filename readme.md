@@ -25,10 +25,10 @@ this template is include :
 ## dependencies
 ### vscode
 - WSL extension (for Windows WSL development)
-
+### common
+- rsync
 ### windows
-- microsoft visual studio community 2022 (v143)
-- rsync (WSL)
+- microsoft visual studio community 2022 (v143)- rsync (WSL)
 - **⚠️ REQUIRED**: UTF-8 system locale setting
   - Go to `제어판` (Control Panel) → `국가 및 지역` (Region) → `관리자 탭` (Administrative tab) → `시스템 로케일 변경` (Change system locale)
   - Check "`세계 언어 지원을 위해 Unicode UTF-8 사용(BETA)`" (Use Unicode UTF-8 for worldwide language support)
