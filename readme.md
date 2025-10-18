@@ -117,7 +117,7 @@ Add to `.bashrc` or `.zshrc`:
 pg() {
   local newName="$1"
   local destDir="$(pwd)/$newName"
-  local templateDir="$HOME/openFrameworks/apps/myApps/vsOFCodeExample"  # adjust this path
+  local templateDir="$HOME/oF/apps/myApps/vsOFCodeExample"  # adjust this path
 
   if [ -z "$newName" ]; then
     echo "❌ Usage: pg <project-name>"
@@ -142,17 +142,28 @@ pg() {
   echo "# $newName" > "$destDir/README.md"
 
   # run project update script
-  cd "$destDir" && \
-  ./projectUpdate.sh
+  cd "$destDir" || return 1
 
-  echo "✅ Project '$newName' created successfully!"
-  echo "   Location: $destDir"
-  echo ""
-  echo "Next steps:"
-  echo "  1. cd $newName"
-  echo "  2. Add addons to addons.make if needed"
-  echo "  3. Run ./addonUpdate.sh to sync addons"
-  echo "  4. Build with 'make Debug' or 'make Release'"
+  # fix line endings (convert CRLF to LF) and make executable
+  sed -i 's/\r$//' projectUpdate.sh addonUpdate.sh 2>/dev/null || \
+    sed -i '' 's/\r$//' projectUpdate.sh addonUpdate.sh 2>/dev/null
+  chmod +x projectUpdate.sh addonUpdate.sh
+
+  # run the update script
+  if ./projectUpdate.sh; then
+    echo ""
+    echo "✅ Project '$newName' created successfully!"
+    echo "   Location: $destDir"
+    echo ""
+    echo "Next steps:"
+    echo "  1. cd $newName"
+    echo "  2. Add addons to addons.make if needed"
+    echo "  3. Run ./addonUpdate.sh to sync addons"
+    echo "  4. Build with 'make Debug' or 'make Release'"
+  else
+    echo "❌ Error: projectUpdate.sh failed"
+    return 1
+  fi
 }
 ```
 
