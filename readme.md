@@ -1,7 +1,8 @@
-# openFrameworks empty project template for vscode support msbuild on windows
+# openFrameworks empty project template for cross-platform vscode setup 
 
 this template is include :
-- build/run/update addon tasks for vscode on windows
+- support msbuild on windows
+- build/run/update addon tasks for vscode on windows/linux/mac
 - launching debug/release app
 - read addon.make and update addon, vs filter update using powershell script
 - run powershell script on WSL (with alias)
@@ -12,35 +13,60 @@ this template is include :
 - visual studio is too heavy
 
 ## feature
-- support vcxproj update
-- addon update (copy from `{OF_ROOT}/addon` to local `addon`)
-- addonUpdate / projectUpdate using powershell script
-- mac/linux still can build, run by `make Debug`, `make Debug`, `make RunDebug`, `make RunRelease` in terminal
+- support vcxproj update (Windows)
+- addon update (copy from `{OF_ROOT}/addons` to local `addons`)
+- addonUpdate / projectUpdate scripts:
+  - **Windows**: `addonUpdate.ps1`, `projectUpdate.ps1` (PowerShell)
+  - **macOS/Linux**: `addonUpdate.sh`, `projectUpdate.sh` (Bash)
+- cross-platform build support:
+  - **Windows**: MSBuild via Visual Studio tasks
+  - **macOS/Linux**: `make Debug`, `make Release`, `make RunDebug`, `make RunRelease`
 
-## dependencies 
+## dependencies
 ### vscode
-- WSL extension
+- WSL extension (for Windows WSL development)
+
 ### windows
 - microsoft visual studio community 2022 (v143)
+- **⚠️ REQUIRED**: UTF-8 system locale setting
+  - Go to `제어판` (Control Panel) → `국가 및 지역` (Region) → `관리자 탭` (Administrative tab) → `시스템 로케일 변경` (Change system locale)
+  - Check "`세계 언어 지원을 위해 Unicode UTF-8 사용(BETA)`" (Use Unicode UTF-8 for worldwide language support)
+  - Reboot required
+  - **Without this setting, you will encounter encoding errors in PowerShell scripts**
 
 ### mac
 - xcode command line tool
 
 ## how to use it
-1. clone this repo : `{OF_ROOT}/apps/myApps/oFVSCodeExample`
-2. copy to new Folder
-3. run `projectUpdate` task
-4. when addon added on `addons.make`, run `addonUpdate` task. addon should already clone to `{OF_ROOT}/addons`
-5. can build project with with `tasks`
+
+### Windows
+1. clone this repo : `{OF_ROOT}/apps/myApps/vsOFCodeExample`
+2. copy to new folder
+3. run `projectUpdate.ps1` (PowerShell) or use VSCode task
+4. when addon added on `addons.make`, run `addonUpdate.ps1` or use VSCode task
+   - addon should already be cloned to `{OF_ROOT}/addons`
+5. build project with VSCode tasks
+
+### macOS/Linux
+1. clone this repo : `{OF_ROOT}/apps/myApps/vsOFCodeExample`
+2. copy to new folder
+3. run `./projectUpdate.sh` in terminal
+4. when addon added on `addons.make`, run `./addonUpdate.sh`
+   - addon should already be cloned to `{OF_ROOT}/addons`
+5. build project with `make Debug` or `make Release`
 
 ## extra tip
 
-### for WSL2
-add this alias on `.bashrc` or `.zshrc`.<br/>
-you can generate `$ pg newProjectName` on linux shell, anywhere you want.<br/>
-> **mind that you should replace `local templateDir` to your template location**.<br/>
-> project location should be `{OF_ROOT}/{ANY}/{ANY}/{NEW_PROJECTNAME}`
-```
+### Project Generator Function (pg)
+
+Add this function to your shell configuration file to quickly create new projects from this template.
+
+#### for WSL2 / Windows
+Add to `.bashrc` or `.zshrc`:
+> **Note**: Replace `templateDir` with your template location
+> Project location should be `{OF_ROOT}/{ANY}/{ANY}/{NEW_PROJECTNAME}`
+
+```bash
 pg() {
   local newName="$1"
   local destDir="$(pwd)/$newName"
@@ -56,7 +82,7 @@ pg() {
     return 1
   fi
 
-  # rsync with exclusion rules, including .git
+  # rsync with exclusion rules
   rsync -av --exclude='bin/*.exe' \
             --exclude='bin/*.dll' \
             --exclude='obj/' \
@@ -74,20 +100,64 @@ pg() {
   cd "$destDir" && \
   powershell.exe -ExecutionPolicy Bypass -File "$(wslpath -w "$destDir/projectUpdate.ps1")"
 
-  # open in VSCode, in windows!
+  # open in VSCode
   cmd.exe /c "code $(wslpath -w "$destDir")" & disown
 }
 
 # PowerShell script aliases
 alias psh='powershell.exe -ExecutionPolicy Bypass -File'
-
 ```
-- this script doing ...
-  - clone folder and rename folder 
-  - reset git info
-  - readme.md will be resets
-  - run ps1 script with alias (addonUpdate.ps1/projectUpdate.ps1)
 
-### broken characters on windows terminal? (like Korean Windows)
-- `제어판` / `국가 및 지역` / `관리자 탭` / 시스템 로케일 변경 에 들어간 뒤
-  - "`세계 언어 지원을 위해 Unicode UTF-8 사용(BETA)` 체크 후 재부팅 
+#### for macOS / Linux
+Add to `.bashrc` or `.zshrc`:
+> **Note**: Replace `templateDir` with your template location
+
+```bash
+pg() {
+  local newName="$1"
+  local destDir="$(pwd)/$newName"
+  local templateDir="$HOME/openFrameworks/apps/myApps/vsOFCodeExample"  # adjust this path
+
+  if [ -z "$newName" ]; then
+    echo "❌ Usage: pg <project-name>"
+    return 1
+  fi
+
+  if [ -d "$destDir" ]; then
+    echo "❌ '$destDir' already exists"
+    return 1
+  fi
+
+  # rsync with exclusion rules
+  rsync -av --exclude='bin/' \
+            --exclude='obj/' \
+            --exclude='*.xcodeproj/xcuserdata/' \
+            --exclude='*.xcodeproj/project.xcworkspace/' \
+            --exclude='.vscode/ipch/' \
+            --exclude='.git/' \
+            "$templateDir/" "$destDir/"
+
+  # create README.md with project name as heading
+  echo "# $newName" > "$destDir/README.md"
+
+  # run project update script
+  cd "$destDir" && \
+  ./projectUpdate.sh
+
+  echo "✅ Project '$newName' created successfully!"
+  echo "   Location: $destDir"
+  echo ""
+  echo "Next steps:"
+  echo "  1. cd $newName"
+  echo "  2. Add addons to addons.make if needed"
+  echo "  3. Run ./addonUpdate.sh to sync addons"
+  echo "  4. Build with 'make Debug' or 'make Release'"
+}
+```
+
+**What this script does:**
+- Clone template folder to new project directory
+- Exclude build artifacts and IDE-specific files
+- Reset README.md with project name
+- Run appropriate update script (`.ps1` for Windows, `.sh` for macOS/Linux)
+- (WSL only) Open project in VSCode
