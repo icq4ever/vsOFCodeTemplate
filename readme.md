@@ -4,6 +4,7 @@ this template is include :
 - build/run/update addon tasks for vscode on windows
 - launching debug/release app
 - read addon.make and update addon, vs filter update using powershell script
+- run powershell script on WSL (with alias)
 
 ## why made this ?
 - in visual studio, adding new files are so annoying
