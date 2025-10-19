@@ -62,12 +62,27 @@ function Add-ItemGroupEntry {
 }
 
 $srcFiles = Get-ChildItem -Recurse -Include *.h,*.hpp,*.cpp,*.c -Path "$projectDir\src", "$projectDir\addons"
+
+# Filter out example, test, and build directories
+$excludePatterns = @('example', 'test', 'sample', 'demo', 'bin', 'obj', 'build', 'libs\')
 foreach ($file in $srcFiles) {
     $relPath = $file.FullName.Replace("$projectDir\", "").Replace("\", "/")
-    if ($file.Extension -match "\.h|\.hpp") {
-        Add-ItemGroupEntry -type "ClInclude" -relativePath $relPath
-    } else {
-        Add-ItemGroupEntry -type "ClCompile" -relativePath $relPath
+
+    # Skip if path contains excluded patterns
+    $shouldExclude = $false
+    foreach ($pattern in $excludePatterns) {
+        if ($relPath -match $pattern) {
+            $shouldExclude = $true
+            break
+        }
+    }
+
+    if (-not $shouldExclude) {
+        if ($file.Extension -match "\.h|\.hpp") {
+            Add-ItemGroupEntry -type "ClInclude" -relativePath $relPath
+        } else {
+            Add-ItemGroupEntry -type "ClCompile" -relativePath $relPath
+        }
     }
 }
 
@@ -89,16 +104,28 @@ $filtersXml += "  <ItemGroup>`n"
 $filterMap = @{}
 foreach ($file in $srcFiles) {
     $relPath = $file.FullName.Replace("$projectDir\", "").Replace("\", "/")
-    $filter = Make-Filter $relPath
-    $type = if ($file.Extension -match "\.h|\.hpp") { "ClInclude" } else { "ClCompile" }
-    $escapedPath = $relPath -replace '&', '&amp;' -replace '<', '&lt;' -replace '>', '&gt;'
 
-    $filtersXml += '    <' + $type + ' Include="' + $escapedPath + '">' + "`n"
-    if ($filter -ne "") {
-        $filtersXml += "      <Filter>$filter</Filter>`n"
-        $filterMap[$filter] = $true
+    # Skip if path contains excluded patterns (same as above)
+    $shouldExclude = $false
+    foreach ($pattern in $excludePatterns) {
+        if ($relPath -match $pattern) {
+            $shouldExclude = $true
+            break
+        }
     }
-    $filtersXml += '    </' + $type + '>' + "`n"
+
+    if (-not $shouldExclude) {
+        $filter = Make-Filter $relPath
+        $type = if ($file.Extension -match "\.h|\.hpp") { "ClInclude" } else { "ClCompile" }
+        $escapedPath = $relPath -replace '&', '&amp;' -replace '<', '&lt;' -replace '>', '&gt;'
+
+        $filtersXml += '    <' + $type + ' Include="' + $escapedPath + '">' + "`n"
+        if ($filter -ne "") {
+            $filtersXml += "      <Filter>$filter</Filter>`n"
+            $filterMap[$filter] = $true
+        }
+        $filtersXml += '    </' + $type + '>' + "`n"
+    }
 }
 $filtersXml += "  </ItemGroup>`n  <ItemGroup>`n"
 foreach ($f in $filterMap.Keys) {
