@@ -145,8 +145,7 @@ $includePaths = @(
     "`${workspaceFolder}/src/**",
     "`${workspaceFolder}/addons/*/src",
     "`${workspaceFolder}/addons/*/include",
-    "`${workspaceFolder}/addons/*/libs/*/src",
-    "`${workspaceFolder}/addons/*/libs/**/include",
+    "`${workspaceFolder}/addons/*/libs/**",
     "`${workspaceFolder}/../../../libs/openFrameworks/**",
     "`${workspaceFolder}/../../../libs/**/include"
 )
