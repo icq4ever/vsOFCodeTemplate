@@ -142,27 +142,42 @@ Write-Host "✅ Generated $filtersPath"
 
 # 4. Update c_cpp_properties.json for includePath
 $includePaths = @(
-    "src",
-    "addons/*/src",
-    "addons/*/include",
-    "addons/*/libs/*/src",
-    "../../libs/openFrameworks",
-    "../../libs/openFrameworks/**",
-    "../../libs/**/include",
-    "../../addons/**/src"
+    "`${workspaceFolder}/src/**",
+    "`${workspaceFolder}/addons/*/src",
+    "`${workspaceFolder}/addons/*/include",
+    "`${workspaceFolder}/addons/*/libs/*/src",
+    "`${workspaceFolder}/addons/*/libs/**/include",
+    "`${workspaceFolder}/../../../libs/openFrameworks/**",
+    "`${workspaceFolder}/../../../libs/**/include"
 )
 
 # Load existing c_cpp_properties.json if it exists
 if (Test-Path $cppPropsPath) {
     $existingJson = Get-Content $cppPropsPath -Raw | ConvertFrom-Json
 
-    # Update includePath for each configuration
-    foreach ($config in $existingJson.configurations) {
-        $config.includePath = $includePaths
+    # Find Windows configuration (Win64, Win32, Windows, etc.)
+    $winConfig = $existingJson.configurations | Where-Object { $_.name -match "Win" }
+
+    if ($winConfig) {
+        # Update only Windows configuration
+        $winConfig.includePath = $includePaths
+        Write-Host "✅ Updated $cppPropsPath (Win64 configuration only)"
+    } else {
+        # Add new Windows configuration if not exists
+        $newWinConfig = @{
+            name = "Win64"
+            includePath = $includePaths
+            defines = @()
+            compilerPath = "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe"
+            cStandard = "c17"
+            cppStandard = "c++17"
+            intelliSenseMode = "windows-msvc-x64"
+        }
+        $existingJson.configurations += $newWinConfig
+        Write-Host "✅ Added Win64 configuration to $cppPropsPath"
     }
 
     $existingJson | ConvertTo-Json -Depth 5 | Set-Content $cppPropsPath -Encoding UTF8
-    Write-Host "✅ Updated $cppPropsPath (preserved existing settings)"
 } else {
     # Create new file if it doesn't exist
     $cppJson = @{
