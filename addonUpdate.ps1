@@ -144,6 +144,10 @@ Write-Host "✅ Generated $filtersPath"
 $includePaths = @(
     "src",
     "addons/*/src",
+    "addons/*/include",
+    "addons/*/libs/*/src",
+    "../../libs/openFrameworks",
+    "../../libs/openFrameworks/**",
     "../../libs/**/include",
     "../../addons/**/src"
 )
