@@ -152,20 +152,34 @@ $includePaths = @(
     "../../addons/**/src"
 )
 
-$cppJson = @{
-    configurations = @(
-        @{
-            name = "Win64"
-            includePath = $includePaths
-            defines = @()
-            compilerPath = "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe"
-            cStandard = "c17"
-            cppStandard = "c++17"
-            intelliSenseMode = "windows-msvc-x64"
-        }
-    )
-    version = 4
-}
+# Load existing c_cpp_properties.json if it exists
+if (Test-Path $cppPropsPath) {
+    $existingJson = Get-Content $cppPropsPath -Raw | ConvertFrom-Json
 
-$cppJson | ConvertTo-Json -Depth 5 | Set-Content $cppPropsPath -Encoding UTF8
-Write-Host "✅ Updated $cppPropsPath"
+    # Update includePath for each configuration
+    foreach ($config in $existingJson.configurations) {
+        $config.includePath = $includePaths
+    }
+
+    $existingJson | ConvertTo-Json -Depth 5 | Set-Content $cppPropsPath -Encoding UTF8
+    Write-Host "✅ Updated $cppPropsPath (preserved existing settings)"
+} else {
+    # Create new file if it doesn't exist
+    $cppJson = @{
+        configurations = @(
+            @{
+                name = "Win64"
+                includePath = $includePaths
+                defines = @()
+                compilerPath = "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe"
+                cStandard = "c17"
+                cppStandard = "c++17"
+                intelliSenseMode = "windows-msvc-x64"
+            }
+        )
+        version = 4
+    }
+
+    $cppJson | ConvertTo-Json -Depth 5 | Set-Content $cppPropsPath -Encoding UTF8
+    Write-Host "✅ Created $cppPropsPath"
+}
