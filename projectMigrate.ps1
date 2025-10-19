@@ -150,12 +150,7 @@ $vscodeFiles = @("tasks.json", "launch.json", "c_cpp_properties.json")
 foreach ($file in $vscodeFiles) {
     $sourcePath = Join-Path $TemplateDir ".vscode\$file"
     if (Test-Path $sourcePath) {
-        $destPath = ".vscode\$file"
-        if (Test-Path $destPath) {
-            Copy-Item $destPath -Destination ".vscode\$file.backup" -Force
-            Write-Host "  ⚠️  Backed up existing $file" -ForegroundColor Yellow
-        }
-        Copy-Item $sourcePath -Destination $destPath -Force
+        Copy-Item $sourcePath -Destination ".vscode\$file" -Force
         Write-Host "  ✓ $file" -ForegroundColor Green
     }
 }

@@ -25,7 +25,7 @@ if (Test-Path $addonDest) {
     }
 }
 
-# 1. Copy addons
+# 1. Copy addons (exclude example, test, sample, demo folders)
 if (Test-Path $addonFile) {
     $addons = Get-Content $addonFile | Where-Object { $_ -and -not $_.StartsWith("#") }
     foreach ($addon in $addons) {
@@ -33,7 +33,16 @@ if (Test-Path $addonFile) {
         $dst = Join-Path $addonDest (Split-Path $addon -Leaf)
         if (-not (Test-Path $dst)) {
             Write-Host "📦 Copying addon: $addon"
-            Copy-Item -Recurse -Force $src $dst
+
+            # Create destination folder
+            New-Item -ItemType Directory -Force -Path $dst | Out-Null
+
+            # Copy all items except example/test/sample/demo folders
+            Get-ChildItem -Path $src | Where-Object {
+                -not ($_.Name -match '^(example|test|sample|demo)')
+            } | ForEach-Object {
+                Copy-Item -Recurse -Force $_.FullName (Join-Path $dst $_.Name)
+            }
         }
     }
 }
@@ -61,28 +70,32 @@ function Add-ItemGroupEntry {
     $projRoot.AppendChild($group) | Out-Null
 }
 
-$srcFiles = Get-ChildItem -Recurse -Include *.h,*.hpp,*.cpp,*.c -Path "$projectDir\src", "$projectDir\addons"
+# Collect source files from src/ and specific addon folders only (whitelist approach)
+$srcPaths = @("$projectDir\src")
 
-# Filter out example, test, and build directories
-$excludePatterns = @('example', 'test', 'sample', 'demo', 'bin', 'obj', 'build', 'libs\')
+# Add addon src, include, and libs folders only
+if (Test-Path "$projectDir\addons") {
+    Get-ChildItem -Directory "$projectDir\addons" | ForEach-Object {
+        $addonPath = $_.FullName
+        # Include src, include, and libs folders from each addon
+        @("src", "include", "libs") | ForEach-Object {
+            $subFolder = Join-Path $addonPath $_
+            if (Test-Path $subFolder) {
+                $srcPaths += $subFolder
+            }
+        }
+    }
+}
+
+$srcFiles = Get-ChildItem -Recurse -Include *.h,*.hpp,*.cpp,*.c -Path $srcPaths
+
 foreach ($file in $srcFiles) {
     $relPath = $file.FullName.Replace("$projectDir\", "").Replace("\", "/")
 
-    # Skip if path contains excluded patterns
-    $shouldExclude = $false
-    foreach ($pattern in $excludePatterns) {
-        if ($relPath -match $pattern) {
-            $shouldExclude = $true
-            break
-        }
-    }
-
-    if (-not $shouldExclude) {
-        if ($file.Extension -match "\.h|\.hpp") {
-            Add-ItemGroupEntry -type "ClInclude" -relativePath $relPath
-        } else {
-            Add-ItemGroupEntry -type "ClCompile" -relativePath $relPath
-        }
+    if ($file.Extension -match "\.h|\.hpp") {
+        Add-ItemGroupEntry -type "ClInclude" -relativePath $relPath
+    } else {
+        Add-ItemGroupEntry -type "ClCompile" -relativePath $relPath
     }
 }
 
@@ -105,27 +118,16 @@ $filterMap = @{}
 foreach ($file in $srcFiles) {
     $relPath = $file.FullName.Replace("$projectDir\", "").Replace("\", "/")
 
-    # Skip if path contains excluded patterns (same as above)
-    $shouldExclude = $false
-    foreach ($pattern in $excludePatterns) {
-        if ($relPath -match $pattern) {
-            $shouldExclude = $true
-            break
-        }
-    }
+    $filter = Make-Filter $relPath
+    $type = if ($file.Extension -match "\.h|\.hpp") { "ClInclude" } else { "ClCompile" }
+    $escapedPath = $relPath -replace '&', '&amp;' -replace '<', '&lt;' -replace '>', '&gt;'
 
-    if (-not $shouldExclude) {
-        $filter = Make-Filter $relPath
-        $type = if ($file.Extension -match "\.h|\.hpp") { "ClInclude" } else { "ClCompile" }
-        $escapedPath = $relPath -replace '&', '&amp;' -replace '<', '&lt;' -replace '>', '&gt;'
-
-        $filtersXml += '    <' + $type + ' Include="' + $escapedPath + '">' + "`n"
-        if ($filter -ne "") {
-            $filtersXml += "      <Filter>$filter</Filter>`n"
-            $filterMap[$filter] = $true
-        }
-        $filtersXml += '    </' + $type + '>' + "`n"
+    $filtersXml += '    <' + $type + ' Include="' + $escapedPath + '">' + "`n"
+    if ($filter -ne "") {
+        $filtersXml += "      <Filter>$filter</Filter>`n"
+        $filterMap[$filter] = $true
     }
+    $filtersXml += '    </' + $type + '>' + "`n"
 }
 $filtersXml += "  </ItemGroup>`n  <ItemGroup>`n"
 foreach ($f in $filterMap.Keys) {

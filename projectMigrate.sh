@@ -143,10 +143,6 @@ mkdir -p ".vscode"
 # Copy VSCode config files (tasks, launch, c_cpp_properties)
 for vscode_file in tasks.json launch.json c_cpp_properties.json; do
     if [ -f "$TEMPLATE_DIR/.vscode/$vscode_file" ]; then
-        if [ -f ".vscode/$vscode_file" ]; then
-            cp ".vscode/$vscode_file" ".vscode/${vscode_file}.backup"
-            echo "  ⚠️  Backed up existing $vscode_file"
-        fi
         cp "$TEMPLATE_DIR/.vscode/$vscode_file" ".vscode/"
         echo "  ✓ $vscode_file"
     fi
