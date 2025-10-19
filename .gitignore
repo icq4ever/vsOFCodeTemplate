@@ -1,6 +1,9 @@
 # Ignore everything inside .vscode
 .vscode/*
 
+# ignore backup file
+*.backup
+
 # But keep shared build settings
 !.vscode/tasks.json
 !.vscode/launch.json
