@@ -53,7 +53,37 @@ this template is include :
 
 ## how to use it
 
-### Windows
+### Option 1: Migrate Existing Project (Recommended for existing projects)
+
+If you already have an openFrameworks project and want to add this template's features:
+
+#### Windows
+```powershell
+# From your existing project directory
+.\projectMigrate.ps1
+```
+
+#### macOS/Linux
+```bash
+# From your existing project directory
+./projectMigrate.sh
+```
+
+**What it does:**
+- Auto-detects template location (looks in same category or `myApps/vsOFCodeTemplate`)
+- Copies all update scripts (`addonUpdate`, `projectUpdate`)
+- Merges `.vscode/` configuration (backs up existing files)
+- Merges `.gitignore` (backs up existing)
+- Adds `.gitattributes` for line ending management
+- **Preserves** your `src/`, `addons.make`, `README.md`, and `.git/`
+
+After migration, run `projectUpdate` to set up your project files.
+
+---
+
+### Option 2: Create New Project from Template
+
+#### Windows
 1. clone this repo : `{OF_ROOT}/apps/myApps/vsOFCodeTemplate`
 2. copy to new folder
 3. run `projectUpdate.ps1` (PowerShell) or use VSCode task
@@ -72,6 +102,65 @@ this template is include :
 5. build project with `make Debug` or `make Release`
 
 ## extra tip
+
+### Shell Functions for Easy Usage
+
+Add these functions to your `.bashrc` or `.zshrc` for convenient project management.
+
+#### Project Migrator Function (migrate)
+
+Quickly migrate existing projects to use this template's configuration:
+
+**for WSL2 / Windows:**
+```bash
+migrate() {
+  local templateDir="/mnt/c/oF_vs/apps/myApps/vsOFCodeTemplate"
+
+  if [ ! -d "$templateDir" ]; then
+    echo "❌ Template directory not found: $templateDir"
+    echo "Please update the templateDir path in your shell config"
+    return 1
+  fi
+
+  # Run PowerShell migration script
+  local winPath="$(wslpath -w "$templateDir/projectMigrate.ps1")"
+  powershell.exe -ExecutionPolicy Bypass -File "$winPath"
+
+  # Open current directory in VSCode
+  cmd.exe /c "code $(wslpath -w "$(pwd)")" & disown
+}
+```
+
+**for macOS / Linux:**
+```bash
+migrate() {
+  local templateDir="$HOME/oF/apps/myApps/vsOFCodeTemplate"  # adjust this path
+
+  if [ ! -d "$templateDir" ]; then
+    echo "❌ Template directory not found: $templateDir"
+    echo "Please update the templateDir path in your shell config"
+    return 1
+  fi
+
+  # Copy migrate script to current directory temporarily
+  cp "$templateDir/projectMigrate.sh" .
+  chmod +x projectMigrate.sh
+
+  # Run migration
+  ./projectMigrate.sh
+
+  # Optionally remove the migrate script after use
+  # rm projectMigrate.sh
+}
+```
+
+**Usage:**
+```bash
+cd /path/to/existing/project
+migrate
+```
+
+---
 
 ### Project Generator Function (pg)
 
