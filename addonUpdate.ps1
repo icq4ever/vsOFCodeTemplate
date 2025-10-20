@@ -152,7 +152,14 @@ $includePaths = @(
 
 # Load existing c_cpp_properties.json if it exists
 if (Test-Path $cppPropsPath) {
-    $existingJson = Get-Content $cppPropsPath -Raw | ConvertFrom-Json
+    $existingContent = Get-Content $cppPropsPath -Raw
+    $existingJson = $existingContent | ConvertFrom-Json
+
+    # Detect indentation from existing file (2 or 4 spaces)
+    $indent = "  "  # default 2 spaces
+    if ($existingContent -match '(?m)^\s{4}"') {
+        $indent = "    "  # 4 spaces detected
+    }
 
     # Find Windows configuration (Win64, Win32, Windows, etc.)
     $winConfig = $existingJson.configurations | Where-Object { $_.name -match "Win" }
@@ -176,7 +183,26 @@ if (Test-Path $cppPropsPath) {
         Write-Host "✅ Added Win64 configuration to $cppPropsPath"
     }
 
-    $existingJson | ConvertTo-Json -Depth 5 | Set-Content $cppPropsPath -Encoding UTF8
+    # Convert to JSON and match existing indentation
+    $jsonContent = ($existingJson | ConvertTo-Json -Depth 5)
+    if ($indent -eq "    ") {
+        # Convert 2-space to 4-space indentation line by line
+        $lines = $jsonContent -split "`r?`n"
+        $convertedLines = $lines | ForEach-Object {
+            $line = $_
+            # Count leading spaces (must be multiple of 2)
+            if ($line -match '^( {2})+') {
+                $spacesCount = $matches[0].Length
+                $level = $spacesCount / 2
+                $newSpaces = '    ' * $level
+                $line -replace '^( {2})+', $newSpaces
+            } else {
+                $line
+            }
+        }
+        $jsonContent = $convertedLines -join "`n"
+    }
+    $jsonContent | Set-Content $cppPropsPath -Encoding UTF8
 } else {
     # Create new file if it doesn't exist
     $cppJson = @{
