@@ -99,6 +99,55 @@ foreach ($file in $srcFiles) {
     }
 }
 
+# Update AdditionalIncludeDirectories for addons
+$includeDirs = @()
+if (Test-Path "$projectDir\addons") {
+    Get-ChildItem -Directory "$projectDir\addons" | ForEach-Object {
+        $addonName = $_.Name
+        # Add src folder
+        if (Test-Path "$projectDir\addons\$addonName\src") {
+            $includeDirs += "addons\$addonName\src"
+        }
+        # Add include folder
+        if (Test-Path "$projectDir\addons\$addonName\include") {
+            $includeDirs += "addons\$addonName\include"
+        }
+        # Add libs folders
+        if (Test-Path "$projectDir\addons\$addonName\libs") {
+            Get-ChildItem -Directory "$projectDir\addons\$addonName\libs" | ForEach-Object {
+                $libName = $_.Name
+                if (Test-Path "$projectDir\addons\$addonName\libs\$libName\src") {
+                    $includeDirs += "addons\$addonName\libs\$libName\src"
+                }
+                if (Test-Path "$projectDir\addons\$addonName\libs\$libName\include") {
+                    $includeDirs += "addons\$addonName\libs\$libName\include"
+                }
+            }
+        }
+    }
+}
+
+# Update AdditionalIncludeDirectories in ItemDefinitionGroup > ClCompile
+if ($includeDirs.Count -gt 0) {
+    $includePathString = ($includeDirs -join ';') + ';%(AdditionalIncludeDirectories)'
+    $itemDefGroups = $projRoot.SelectNodes("//ns:ItemDefinitionGroup", $nsMgr)
+    foreach ($group in $itemDefGroups) {
+        $clCompile = $group.SelectSingleNode("ns:ClCompile", $nsMgr)
+        if ($clCompile) {
+            $addIncDirs = $clCompile.SelectSingleNode("ns:AdditionalIncludeDirectories", $nsMgr)
+            if ($addIncDirs) {
+                # Replace existing value
+                $addIncDirs.InnerText = $includePathString
+            } else {
+                # Create new AdditionalIncludeDirectories element
+                $addIncDirsElem = $proj.CreateElement("AdditionalIncludeDirectories", $projRoot.NamespaceURI)
+                $addIncDirsElem.InnerText = $includePathString
+                $clCompile.AppendChild($addIncDirsElem) | Out-Null
+            }
+        }
+    }
+}
+
 $proj.Save($vcxprojPath)
 Write-Host "✅ Updated $vcxprojPath"
 
