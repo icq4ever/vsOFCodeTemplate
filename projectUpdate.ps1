@@ -1,178 +1,334 @@
 $ErrorActionPreference = "Stop"
 
-# Get current folder and intended project name
-$NewName = Split-Path -Leaf (Get-Location)
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  openFrameworks Project Update Script" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
 
-# Detect current .vcxproj
-$OldProj = Get-ChildItem -Filter *.vcxproj | Select-Object -First 1
-if (-not $OldProj) {
-    Write-Host "❌ .vcxproj file does not exist." -ForegroundColor Red
+# ============================================================================
+# 1. Get project info and paths
+# ============================================================================
+$projectDir = Get-Location
+$projectName = Split-Path $projectDir -Leaf
+$oFRoot = Resolve-Path "$projectDir\..\..\.."
+
+$vcxprojPath = Join-Path $projectDir "$projectName.vcxproj"
+$filtersPath = Join-Path $projectDir "$projectName.vcxproj.filters"
+$slnPath = Join-Path $projectDir "$projectName.sln"
+$addonFile = Join-Path $projectDir "addons.make"
+
+Write-Host "📁 Project: $projectName" -ForegroundColor Green
+Write-Host "📁 Location: $projectDir" -ForegroundColor Green
+Write-Host "📁 OF Root: $oFRoot" -ForegroundColor Green
+Write-Host ""
+
+# ============================================================================
+# 2. Check if template files exist
+# ============================================================================
+$templateDir = $PSScriptRoot
+$vcxprojTemplate = Join-Path $templateDir "vsOFCodeTemplate.vcxproj.template"
+$filtersTemplate = Join-Path $templateDir "vsOFCodeTemplate.vcxproj.filters.template"
+$slnTemplate = Join-Path $templateDir "vsOFCodeTemplate.sln.template"
+
+if (-not (Test-Path $vcxprojTemplate)) {
+    Write-Host "❌ Template file not found: $vcxprojTemplate" -ForegroundColor Red
     exit 1
 }
-$OldName = [System.IO.Path]::GetFileNameWithoutExtension($OldProj.Name)
 
-if ($OldName -ne $NewName) {
-
-Write-Host "🔁 Renaming project: '$OldName' → '$NewName'"
-
-# File extensions to rename and patch
-$Extensions = @(".vcxproj", ".vcxproj.filters", ".vcxproj.user")
-
-# Rename files
-foreach ($Ext in $Extensions) {
-    $OldFile = ".\$OldName$Ext"
-    $NewFile = ".\$NewName$Ext"
-    if (Test-Path $OldFile) {
-        Rename-Item $OldFile $NewFile -Force
-        Write-Host "✔️ Renamed: $OldFile → $NewFile"
+# ============================================================================
+# 3. Read addons from addons.make
+# ============================================================================
+$addons = @()
+if (Test-Path $addonFile) {
+    $addons = Get-Content $addonFile | Where-Object { $_ -and -not $_.StartsWith("#") }
+    if ($addons.Count -gt 0) {
+        Write-Host "📦 Found addons:" -ForegroundColor Yellow
+        foreach ($addon in $addons) {
+            Write-Host "   - $addon" -ForegroundColor Yellow
+        }
+        Write-Host ""
     }
 }
 
-# Update internal contents
-foreach ($Ext in $Extensions) {
-    $Target = ".\$NewName$Ext"
-    if (Test-Path $Target) {
-        (Get-Content $Target) -replace $OldName, $NewName | Set-Content $Target
-        Write-Host "📝 Updated references inside: $Target"
+# ============================================================================
+# 4. Collect source files
+# ============================================================================
+Write-Host "🔍 Scanning for source files..." -ForegroundColor Cyan
+
+$allSourceFiles = @()
+
+# Scan src/ directory
+if (Test-Path "$projectDir\src") {
+    $srcFiles = Get-ChildItem -Recurse -Include *.h,*.hpp,*.cpp,*.c -Path "$projectDir\src"
+    $allSourceFiles += $srcFiles
+    Write-Host "   ✓ Found $($srcFiles.Count) files in src/" -ForegroundColor Green
+}
+
+# Scan addon directories
+$addonIncludeDirs = @()
+$addonProjectRefs = @()
+
+foreach ($addon in $addons) {
+    $addonPath = Join-Path $oFRoot "addons\$addon"
+    if (Test-Path $addonPath) {
+        # Collect addon include directories
+        $addonIncludeDirs += "..\..\..\addons\$addon\src"
+        
+        $includeDir = Join-Path $addonPath "include"
+        if (Test-Path $includeDir) {
+            $addonIncludeDirs += "..\..\..\addons\$addon\include"
+        }
+        
+        $libsDir = Join-Path $addonPath "libs"
+        if (Test-Path $libsDir) {
+            $libSubDirs = Get-ChildItem -Directory -Path $libsDir -Recurse | Where-Object { $_.Name -match "^(include|src)$" }
+            foreach ($subDir in $libSubDirs) {
+                $relPath = $subDir.FullName.Replace("$oFRoot\", "..\..\..\").Replace("\", "\")
+                $addonIncludeDirs += $relPath
+            }
+        }
+
+        # Find addon source files (only from src, include, libs)
+        $allowedDirs = @("src", "include", "libs")
+        foreach ($dir in $allowedDirs) {
+            $targetPath = Join-Path $addonPath $dir
+            if (Test-Path $targetPath) {
+                $addonFiles = Get-ChildItem -Recurse -Include *.h,*.hpp,*.cpp,*.c -Path $targetPath
+                $allSourceFiles += $addonFiles
+            }
+        }
+
+        # Find addon .vcxproj files for ProjectReference
+        $addonVcxprojs = Get-ChildItem -Path $addonPath -Filter "*.vcxproj" -Recurse | Where-Object {
+            $_.FullName -notmatch '\\(example|examples|test|tests|sample|samples|demo|demos)\\'
+        }
+        
+        foreach ($vcxproj in $addonVcxprojs) {
+            $vcxprojContent = Get-Content $vcxproj.FullName -Raw
+            if ($vcxprojContent -match '<ProjectGuid>\{([^}]+)\}</ProjectGuid>') {
+                $guid = "{$($matches[1])}"
+                $relPath = $vcxproj.FullName.Replace("$oFRoot\", "..\..\..\").Replace("\", "\")
+                $addonProjectRefs += @{
+                    Guid = $guid
+                    Path = $relPath
+                }
+            }
+        }
     }
 }
 
-# Rename and update solution file
-$OldSln = ".\$OldName.sln"
-$NewSln = ".\$NewName.sln"
-if (Test-Path $OldSln) {
-    Rename-Item $OldSln $NewSln -Force
-    Write-Host "✔️ Renamed: $OldSln → $NewSln"
+Write-Host "   ✓ Total source files: $($allSourceFiles.Count)" -ForegroundColor Green
+Write-Host ""
 
-    # Update references inside .sln
-    (Get-Content $NewSln) -replace $OldName, $NewName | Set-Content $NewSln
-    Write-Host "📝 Updated references inside: $NewSln"
+# ============================================================================
+# 5. Generate vcxproj from template
+# ============================================================================
+Write-Host "📝 Generating $projectName.vcxproj..." -ForegroundColor Cyan
+
+# Load template
+[xml]$vcxproj = Get-Content $vcxprojTemplate
+$ns = $vcxproj.Project.NamespaceURI
+
+# Update project name
+$rootNsNode = $vcxproj.Project.PropertyGroup | Where-Object { $_.RootNamespace } | Select-Object -First 1
+if ($rootNsNode -and $rootNsNode.RootNamespace) {
+    $rootNsNode.RootNamespace = [string]$projectName
+}
+
+# Remove existing ClCompile and ClInclude ItemGroups
+$itemGroupsToRemove = $vcxproj.Project.ItemGroup | Where-Object { 
+    $_.ClCompile -or $_.ClInclude 
+}
+foreach ($ig in $itemGroupsToRemove) {
+    $vcxproj.Project.RemoveChild($ig) | Out-Null
+}
+
+# Create new ItemGroups
+$compileGroup = $vcxproj.CreateElement("ItemGroup", $ns)
+$includeGroup = $vcxproj.CreateElement("ItemGroup", $ns)
+
+# Add source files with deduplication
+$addedFiles = @{}
+foreach ($file in $allSourceFiles) {
+    if ($file.FullName.StartsWith("$projectDir\")) {
+        $relPath = $file.FullName.Replace("$projectDir\", "").Replace("\", "\")
+    } else {
+        $relPath = $file.FullName.Replace("$oFRoot\", "..\..\..\").Replace("\", "\")
+    }
+
+    if ($addedFiles.ContainsKey($relPath)) { continue }
+    $addedFiles[$relPath] = $true
+
+    if ($file.Extension -match "\.(h|hpp)$") {
+        $item = $vcxproj.CreateElement("ClInclude", $ns)
+        $item.SetAttribute("Include", $relPath)
+        $includeGroup.AppendChild($item) | Out-Null
+    } else {
+        $item = $vcxproj.CreateElement("ClCompile", $ns)
+        $item.SetAttribute("Include", $relPath)
+        $compileGroup.AppendChild($item) | Out-Null
+    }
+}
+
+# Find insertion point (before first Import or at end)
+$firstImport = $vcxproj.Project.Import | Select-Object -First 1
+if ($firstImport) {
+    $vcxproj.Project.InsertBefore($compileGroup, $firstImport) | Out-Null
+    $vcxproj.Project.InsertBefore($includeGroup, $firstImport) | Out-Null
 } else {
-    # Create new .sln file if it doesn't exist
-    $vcxprojGuid = "{7FD42DF7-442E-479A-BA76-D0022F99702A}"
-
-    # Try to extract GUID from existing vcxproj
-    $vcxprojContent = Get-Content ".\$NewName.vcxproj" -Raw
-    if ($vcxprojContent -match '<ProjectGuid>\{([^}]+)\}</ProjectGuid>') {
-        $vcxprojGuid = "{$($matches[1])}"
-    }
-
-    $ofLibGuid = "{5837595D-ACA9-485C-8E76-729040CE4B0B}"
-
-    $slnContent = @"
-
-Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
- VisualStudioVersion = 17.0.31903.59
-MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "$NewName", "$NewName.vcxproj", "$vcxprojGuid"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "openframeworksLib", "..\..\..\libs\openFrameworksCompiled\project\vs\openframeworksLib.vcxproj", "$ofLibGuid"
-EndProject
-Global
-	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x64 = Debug|x64
-		Release|x64 = Release|x64
-	EndGlobalSection
-	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		$vcxprojGuid.Debug|x64.ActiveCfg = Debug|x64
-		$vcxprojGuid.Debug|x64.Build.0 = Debug|x64
-		$vcxprojGuid.Release|x64.ActiveCfg = Release|x64
-		$vcxprojGuid.Release|x64.Build.0 = Release|x64
-		$ofLibGuid.Debug|x64.ActiveCfg = Debug|x64
-		$ofLibGuid.Debug|x64.Build.0 = Debug|x64
-		$ofLibGuid.Release|x64.ActiveCfg = Release|x64
-		$ofLibGuid.Release|x64.Build.0 = Release|x64
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
-	EndGlobalSection
-EndGlobal
-"@
-}
-
-Write-Host ""
-Write-Host "✅ Project rename complete."
-Write-Host "   Old name: $OldName"
-Write-Host "   New name: $NewName"
-Write-Host ""
-}
-
-# ============================================================================
-# Auto-update vcxproj with source files from src/ folder
-# ============================================================================
-
-Write-Host "🔍 Scanning src/ folder for source files..."
-
-$vcxprojPath = ".\$NewName.vcxproj"
-if (-not (Test-Path $vcxprojPath)) {
-    Write-Host "⚠️  vcxproj file not found. Skipping auto-update."
-    exit 0
-}
-
-# Scan for .cpp and .h files in src/ folder (recursively)
-$cppFiles = Get-ChildItem -Path "src" -Filter "*.cpp" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName.Replace((Get-Location).Path + "\", "").Replace("\", "/") }
-$hFiles = Get-ChildItem -Path "src" -Filter "*.h" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName.Replace((Get-Location).Path + "\", "").Replace("\", "/") }
-
-if ($cppFiles.Count -eq 0 -and $hFiles.Count -eq 0) {
-    Write-Host "⚠️  No source files found in src/ folder."
-    exit 0
-}
-
-# Load vcxproj as XML
-[xml]$vcxproj = Get-Content $vcxprojPath
-
-# Find or create ItemGroup for ClCompile
-$compileGroup = $vcxproj.Project.ItemGroup | Where-Object { $_.ClCompile -ne $null } | Select-Object -First 1
-if (-not $compileGroup) {
-    $compileGroup = $vcxproj.CreateElement("ItemGroup", $vcxproj.Project.NamespaceURI)
     $vcxproj.Project.AppendChild($compileGroup) | Out-Null
-}
-
-# Find or create ItemGroup for ClInclude
-$includeGroup = $vcxproj.Project.ItemGroup | Where-Object { $_.ClInclude -ne $null } | Select-Object -First 1
-if (-not $includeGroup) {
-    $includeGroup = $vcxproj.CreateElement("ItemGroup", $vcxproj.Project.NamespaceURI)
     $vcxproj.Project.AppendChild($includeGroup) | Out-Null
 }
 
-# Get existing files in vcxproj (from ALL ItemGroups)
-$allItemGroups = $vcxproj.Project.ItemGroup
-$existingCppFiles = @($allItemGroups | ForEach-Object { $_.ClCompile } | ForEach-Object { $_.Include })
-$existingHFiles = @($allItemGroups | ForEach-Object { $_.ClInclude } | ForEach-Object { $_.Include })
-
-# Add new .cpp files
-$addedCpp = 0
-foreach ($file in $cppFiles) {
-    if ($existingCppFiles -notcontains $file) {
-        $newNode = $vcxproj.CreateElement("ClCompile", $vcxproj.Project.NamespaceURI)
-        $newNode.SetAttribute("Include", $file)
-        $compileGroup.AppendChild($newNode) | Out-Null
-        Write-Host "  ✔️ Added: $file"
-        $addedCpp++
+# Add addon include directories to AdditionalIncludeDirectories
+if ($addonIncludeDirs.Count -gt 0) {
+    $xpath = "//msbuild:ClCompile/msbuild:AdditionalIncludeDirectories"
+    $nsmgr = New-Object System.Xml.XmlNamespaceManager($vcxproj.NameTable)
+    $nsmgr.AddNamespace("msbuild", $ns)
+    
+    $includeNodes = $vcxproj.SelectNodes($xpath, $nsmgr)
+    foreach ($node in $includeNodes) {
+        $currentValue = $node.InnerText
+        $addonDirs = $addonIncludeDirs -join ";"
+        $node.InnerText = "$currentValue;$addonDirs"
     }
 }
 
-# Add new .h files
-$addedH = 0
-foreach ($file in $hFiles) {
-    if ($existingHFiles -notcontains $file) {
-        $newNode = $vcxproj.CreateElement("ClInclude", $vcxproj.Project.NamespaceURI)
-        $newNode.SetAttribute("Include", $file)
-        $includeGroup.AppendChild($newNode) | Out-Null
-        Write-Host "  ✔️ Added: $file"
-        $addedH++
-    }
+# Add ProjectReferences for openframeworksLib and addons
+$projRefGroup = $vcxproj.CreateElement("ItemGroup", $ns)
+
+# openframeworksLib reference
+$ofLibRef = $vcxproj.CreateElement("ProjectReference", $ns)
+$ofLibRef.SetAttribute("Include", "`$(OF_ROOT)\libs\openFrameworksCompiled\project\vs\openframeworksLib.vcxproj")
+$ofLibProj = $vcxproj.CreateElement("Project", $ns)
+$ofLibProj.InnerText = "{5837595d-aca9-485c-8e76-729040ce4b0b}"
+$ofLibRef.AppendChild($ofLibProj) | Out-Null
+$projRefGroup.AppendChild($ofLibRef) | Out-Null
+
+# Addon project references
+foreach ($ref in $addonProjectRefs) {
+    $addonRef = $vcxproj.CreateElement("ProjectReference", $ns)
+    $addonRef.SetAttribute("Include", $ref.Path)
+    $addonProj = $vcxproj.CreateElement("Project", $ns)
+    $addonProj.InnerText = $ref.Guid
+    $addonRef.AppendChild($addonProj) | Out-Null
+    $projRefGroup.AppendChild($addonRef) | Out-Null
 }
 
-# Save if changes were made
-if ($addedCpp -gt 0 -or $addedH -gt 0) {
-    $vcxproj.Save($vcxprojPath)
-    Write-Host ""
-    Write-Host "✅ vcxproj updated: $addedCpp .cpp files, $addedH .h files added."
+if ($firstImport) {
+    $vcxproj.Project.InsertBefore($projRefGroup, $firstImport) | Out-Null
 } else {
-    Write-Host "✅ All source files already in vcxproj. No changes needed."
+    $vcxproj.Project.AppendChild($projRefGroup) | Out-Null
 }
+
+# Save vcxproj
+$vcxproj.Save($vcxprojPath)
+Write-Host "   ✓ Saved $projectName.vcxproj" -ForegroundColor Green
+
+# ============================================================================
+# 6. Generate filters file
+# ============================================================================
+Write-Host "📝 Generating $projectName.vcxproj.filters..." -ForegroundColor Cyan
+
+function Get-FilterPath {
+    param($path)
+    $parts = $path -split '[\\/]'
+    if ($parts.Length -gt 1) {
+        return ($parts[0..($parts.Length - 2)] -join '\')
+    }
+    return ""
+}
+
+[xml]$filters = $vcxproj.Clone()
+$filters.LoadXml("<?xml version=`"1.0`" encoding=`"utf-8`"?><Project ToolsVersion=`"4.0`" xmlns=`"http://schemas.microsoft.com/developer/msbuild/2003`"></Project>")
+
+$filterItemGroup = $filters.CreateElement("ItemGroup", $ns)
+$filterDefGroup = $filters.CreateElement("ItemGroup", $ns)
+$filterMap = @{}
+
+foreach ($file in $allSourceFiles) {
+    if ($file.FullName.StartsWith("$projectDir\")) {
+        $relPath = $file.FullName.Replace("$projectDir\", "").Replace("\", "\")
+    } else {
+        $relPath = $file.FullName.Replace("$oFRoot\", "..\..\..\").Replace("\", "\")
+    }
+
+    if ($addedFiles.ContainsKey($relPath)) {
+        $filterPath = Get-FilterPath $relPath
+        $itemType = if ($file.Extension -match "\.(h|hpp)$") { "ClInclude" } else { "ClCompile" }
+        
+        $item = $filters.CreateElement($itemType, $ns)
+        $item.SetAttribute("Include", $relPath)
+        
+        if ($filterPath) {
+            $filterEl = $filters.CreateElement("Filter", $ns)
+            $filterEl.InnerText = $filterPath
+            $item.AppendChild($filterEl) | Out-Null
+            $filterMap[$filterPath] = $true
+        }
+        
+        $filterItemGroup.AppendChild($item) | Out-Null
+    }
+}
+
+foreach ($filterPath in $filterMap.Keys) {
+    $filter = $filters.CreateElement("Filter", $ns)
+    $filter.SetAttribute("Include", $filterPath)
+    $uuid = $filters.CreateElement("UniqueIdentifier", $ns)
+    $uuid.InnerText = "{$([guid]::NewGuid().ToString())}"
+    $filter.AppendChild($uuid) | Out-Null
+    $filterDefGroup.AppendChild($filter) | Out-Null
+}
+
+$filters.Project.AppendChild($filterItemGroup) | Out-Null
+$filters.Project.AppendChild($filterDefGroup) | Out-Null
+
+$filters.Save($filtersPath)
+Write-Host "   ✓ Saved $projectName.vcxproj.filters" -ForegroundColor Green
+
+# ============================================================================
+# 7. Generate solution file
+# ============================================================================
+Write-Host "📝 Generating $projectName.sln..." -ForegroundColor Cyan
+
+$slnContent = Get-Content $slnTemplate -Raw
+$slnContent = $slnContent -replace "vsOFCodeTemplate", $projectName
+
+# Add addon projects to solution
+if ($addonProjectRefs.Count -gt 0) {
+    $projectSection = ""
+    foreach ($ref in $addonProjectRefs) {
+        $projName = [System.IO.Path]::GetFileNameWithoutExtension($ref.Path)
+        $projectSection += "Project(`"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}`") = `"$projName`", `"$($ref.Path)`", `"$($ref.Guid)`"`r`nEndProject`r`n"
+    }
+    
+    # Insert after openframeworksLib project
+    $slnContent = $slnContent -replace "(openframeworksLib.*?EndProject)", "`$1`r`n$projectSection"
+    
+    # Add build configurations
+    $configSection = ""
+    foreach ($ref in $addonProjectRefs) {
+        $guid = $ref.Guid
+        $configSection += "`t`t$guid.Debug|x64.ActiveCfg = Debug|x64`r`n"
+        $configSection += "`t`t$guid.Debug|x64.Build.0 = Debug|x64`r`n"
+        $configSection += "`t`t$guid.Release|x64.ActiveCfg = Release|x64`r`n"
+        $configSection += "`t`t$guid.Release|x64.Build.0 = Release|x64`r`n"
+    }
+    
+    $slnContent = $slnContent -replace "(GlobalSection\(SolutionProperties\))", "$configSection`t`$1"
+}
+
+Set-Content -Path $slnPath -Value $slnContent -Encoding UTF8
+Write-Host "   ✓ Saved $projectName.sln" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Green
+Write-Host "  ✅ Project update complete!" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
+Write-Host ""
+Write-Host "Summary:" -ForegroundColor Cyan
+Write-Host "  - Project: $projectName" -ForegroundColor White
+Write-Host "  - Source files: $($allSourceFiles.Count)" -ForegroundColor White
+Write-Host "  - Addons: $($addons.Count)" -ForegroundColor White
+Write-Host "  - Addon projects: $($addonProjectRefs.Count)" -ForegroundColor White
+Write-Host ""

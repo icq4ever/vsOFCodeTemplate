@@ -1,10 +1,32 @@
 #!/bin/bash
 set -e
 
-# Get current folder name (new project name)
-NEW_NAME="$(basename "$(pwd)")"
+# ============================================================================
+# Unified Project Update Script for openFrameworks (macOS/Linux)
+# ============================================================================
+# This script:
+# - Renames project files to match folder name
+# - Updates Makefile configuration
+# - Configures VSCode IntelliSense for addons
+# ============================================================================
 
-# Find existing project files to detect old name
+# Get current folder name and project info
+NEW_NAME="$(basename "$(pwd)")"
+PROJECT_DIR="$(pwd)"
+OF_ROOT="$(cd "$PROJECT_DIR/../../.." && pwd)"
+ADDON_FILE="$PROJECT_DIR/addons.make"
+
+echo "🔧 openFrameworks Project Update"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Project:  $NEW_NAME"
+echo "Location: $PROJECT_DIR"
+echo "OF Root:  $OF_ROOT"
+echo ""
+
+# ============================================================================
+# Step 1: Detect old project name and rename if needed
+# ============================================================================
+
 OLD_NAME=""
 
 # Try to find old name from various sources
@@ -13,87 +35,86 @@ if ls *.xcodeproj 2>/dev/null | grep -q .; then
     OLD_PROJ="$(ls *.xcodeproj | head -1)"
     OLD_NAME="$(basename "$OLD_PROJ" .xcodeproj)"
 elif ls *.vcxproj 2>/dev/null | grep -q .; then
-    # Windows/Visual Studio: find .vcxproj
+    # Windows/Visual Studio: find .vcxproj (in case running on WSL)
     OLD_PROJ="$(ls *.vcxproj | head -1)"
     OLD_NAME="$(basename "$OLD_PROJ" .vcxproj)"
 elif [ -f "Makefile" ]; then
     # Linux/macOS: try to find project name in Makefile
     OLD_NAME="$(grep -m 1 "APPNAME" Makefile 2>/dev/null | sed 's/.*=\s*//' || echo "")"
     if [ -z "$OLD_NAME" ]; then
-        # If APPNAME not found, use the directory name as fallback
         OLD_NAME="$NEW_NAME"
     fi
 else
-    echo "⚠️  No project files found (.xcodeproj, .vcxproj, or Makefile)."
     OLD_NAME="$NEW_NAME"
 fi
 
-if [ "$OLD_NAME" = "$NEW_NAME" ]; then
-    echo "✅ Project name already matches folder name. No update needed."
-    exit 0
-fi
+if [ "$OLD_NAME" != "$NEW_NAME" ]; then
+    echo "🔁 Renaming project: '$OLD_NAME' → '$NEW_NAME'"
+    echo ""
 
-echo "🔁 Renaming project: '$OLD_NAME' → '$NEW_NAME'"
+    # macOS: Rename .xcodeproj
+    if [ -d "${OLD_NAME}.xcodeproj" ]; then
+        mv "${OLD_NAME}.xcodeproj" "${NEW_NAME}.xcodeproj"
+        echo "  ✔️ Renamed: ${OLD_NAME}.xcodeproj → ${NEW_NAME}.xcodeproj"
 
-# macOS: Rename .xcodeproj
-if [ -d "${OLD_NAME}.xcodeproj" ]; then
-    mv "${OLD_NAME}.xcodeproj" "${NEW_NAME}.xcodeproj"
-    echo "✔️ Renamed: ${OLD_NAME}.xcodeproj → ${NEW_NAME}.xcodeproj"
-
-    # Update project.pbxproj inside
-    if [ -f "${NEW_NAME}.xcodeproj/project.pbxproj" ]; then
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s/${OLD_NAME}/${NEW_NAME}/g" "${NEW_NAME}.xcodeproj/project.pbxproj"
-        else
-            sed -i "s/${OLD_NAME}/${NEW_NAME}/g" "${NEW_NAME}.xcodeproj/project.pbxproj"
+        # Update project.pbxproj inside
+        if [ -f "${NEW_NAME}.xcodeproj/project.pbxproj" ]; then
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                sed -i '' "s/${OLD_NAME}/${NEW_NAME}/g" "${NEW_NAME}.xcodeproj/project.pbxproj"
+            else
+                sed -i "s/${OLD_NAME}/${NEW_NAME}/g" "${NEW_NAME}.xcodeproj/project.pbxproj"
+            fi
+            echo "  📝 Updated references inside: project.pbxproj"
         fi
-        echo "📝 Updated references inside: project.pbxproj"
     fi
-fi
 
-# Windows/Visual Studio: Rename .vcxproj and .sln
-if [ -f "${OLD_NAME}.vcxproj" ]; then
-    mv "${OLD_NAME}.vcxproj" "${NEW_NAME}.vcxproj"
-    echo "✔️ Renamed: ${OLD_NAME}.vcxproj → ${NEW_NAME}.vcxproj"
+    # Windows/Visual Studio: Rename .vcxproj and .sln (if running on WSL)
+    if [ -f "${OLD_NAME}.vcxproj" ]; then
+        mv "${OLD_NAME}.vcxproj" "${NEW_NAME}.vcxproj"
+        echo "  ✔️ Renamed: ${OLD_NAME}.vcxproj → ${NEW_NAME}.vcxproj"
 
-    # Update RootNamespace inside .vcxproj
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/<RootNamespace>${OLD_NAME}<\/RootNamespace>/<RootNamespace>${NEW_NAME}<\/RootNamespace>/g" "${NEW_NAME}.vcxproj"
-    else
-        sed -i "s/<RootNamespace>${OLD_NAME}<\/RootNamespace>/<RootNamespace>${NEW_NAME}<\/RootNamespace>/g" "${NEW_NAME}.vcxproj"
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s/<RootNamespace>${OLD_NAME}<\/RootNamespace>/<RootNamespace>${NEW_NAME}<\/RootNamespace>/g" "${NEW_NAME}.vcxproj"
+        else
+            sed -i "s/<RootNamespace>${OLD_NAME}<\/RootNamespace>/<RootNamespace>${NEW_NAME}<\/RootNamespace>/g" "${NEW_NAME}.vcxproj"
+        fi
+        echo "  📝 Updated RootNamespace in: ${NEW_NAME}.vcxproj"
     fi
-    echo "📝 Updated RootNamespace in: ${NEW_NAME}.vcxproj"
-fi
 
-if [ -f "${OLD_NAME}.vcxproj.filters" ]; then
-    mv "${OLD_NAME}.vcxproj.filters" "${NEW_NAME}.vcxproj.filters"
-    echo "✔️ Renamed: ${OLD_NAME}.vcxproj.filters → ${NEW_NAME}.vcxproj.filters"
-fi
-
-if [ -f "${OLD_NAME}.sln" ]; then
-    mv "${OLD_NAME}.sln" "${NEW_NAME}.sln"
-    echo "✔️ Renamed: ${OLD_NAME}.sln → ${NEW_NAME}.sln"
-
-    # Update project references inside .sln
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/${OLD_NAME}/${NEW_NAME}/g" "${NEW_NAME}.sln"
-    else
-        sed -i "s/${OLD_NAME}/${NEW_NAME}/g" "${NEW_NAME}.sln"
+    if [ -f "${OLD_NAME}.vcxproj.filters" ]; then
+        mv "${OLD_NAME}.vcxproj.filters" "${NEW_NAME}.vcxproj.filters"
+        echo "  ✔️ Renamed: ${OLD_NAME}.vcxproj.filters → ${NEW_NAME}.vcxproj.filters"
     fi
-    echo "📝 Updated references inside: ${NEW_NAME}.sln"
-fi
 
-# Update Makefile if exists
-if [ -f "Makefile" ]; then
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s/APPNAME\s*=.*/APPNAME = ${NEW_NAME}/" Makefile
-    else
-        sed -i "s/APPNAME\s*=.*/APPNAME = ${NEW_NAME}/" Makefile
+    if [ -f "${OLD_NAME}.sln" ]; then
+        mv "${OLD_NAME}.sln" "${NEW_NAME}.sln"
+        echo "  ✔️ Renamed: ${OLD_NAME}.sln → ${NEW_NAME}.sln"
+
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s/${OLD_NAME}/${NEW_NAME}/g" "${NEW_NAME}.sln"
+        else
+            sed -i "s/${OLD_NAME}/${NEW_NAME}/g" "${NEW_NAME}.sln"
+        fi
+        echo "  📝 Updated references inside: ${NEW_NAME}.sln"
     fi
-    echo "📝 Updated APPNAME in Makefile"
+
+    # Update Makefile if exists
+    if [ -f "Makefile" ]; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s/APPNAME\s*=.*/APPNAME = ${NEW_NAME}/" Makefile
+        else
+            sed -i "s/APPNAME\s*=.*/APPNAME = ${NEW_NAME}/" Makefile
+        fi
+        echo "  📝 Updated APPNAME in Makefile"
+    fi
+
+    echo ""
 fi
 
-# Create or update config.make if it doesn't exist
+# ============================================================================
+# Step 2: Create/Update config.make if needed
+# ============================================================================
+
 if [ ! -f "config.make" ]; then
     cat > config.make << 'EOF'
 ################################################################################
@@ -240,9 +261,90 @@ if [ ! -f "config.make" ]; then
 # PROJECT_CC =
 EOF
     echo "✅ Created config.make"
+    echo ""
 fi
 
+# ============================================================================
+# Step 3: Configure VSCode IntelliSense for addons
+# ============================================================================
+
+CPP_PROPS_PATH="$PROJECT_DIR/.vscode/c_cpp_properties.json"
+
+# Detect OS for appropriate configuration
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    PLATFORM="macOS"
+    COMPILER_PATH="/usr/bin/clang++"
+    INTELLISENSE_MODE="macos-clang-x64"
+else
+    PLATFORM="Linux"
+    COMPILER_PATH="/usr/bin/g++"
+    INTELLISENSE_MODE="linux-gcc-x64"
+fi
+
+# Read addons from addons.make
+ADDON_COUNT=0
+if [ -f "$ADDON_FILE" ]; then
+    echo "📦 Found addons in addons.make:"
+    while IFS= read -r addon || [[ -n "$addon" ]]; do
+        # Skip empty lines and comments
+        if [[ -n "$addon" && ! "$addon" =~ ^# ]]; then
+            echo "  • $addon"
+            ADDON_COUNT=$((ADDON_COUNT + 1))
+        fi
+    done < "$ADDON_FILE"
+    echo ""
+fi
+
+# Create .vscode directory if needed
+mkdir -p "$(dirname "$CPP_PROPS_PATH")"
+
+# Create or update c_cpp_properties.json
+cat > "$CPP_PROPS_PATH" << EOF
+{
+  "version": 4,
+  "configurations": [
+    {
+      "name": "$PLATFORM",
+      "includePath": [
+        "\${workspaceFolder}/src",
+        "\${workspaceFolder}/src/**",
+        "\${workspaceFolder}/../../../addons/*/src",
+        "\${workspaceFolder}/../../../addons/*/include",
+        "\${workspaceFolder}/../../../addons/*/libs/*/include",
+        "\${workspaceFolder}/../../../addons/**/src",
+        "\${workspaceFolder}/../../../libs/openFrameworks",
+        "\${workspaceFolder}/../../../libs/openFrameworks/**",
+        "\${workspaceFolder}/../../../libs/**/include"
+      ],
+      "defines": [],
+      "compilerPath": "$COMPILER_PATH",
+      "cStandard": "c17",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "$INTELLISENSE_MODE"
+    }
+  ]
+}
+EOF
+
+echo "✅ Updated .vscode/c_cpp_properties.json"
 echo ""
-echo "✅ Project rename complete."
-echo "   Old name: $OLD_NAME"
-echo "   New name: $NEW_NAME"
+
+# ============================================================================
+# Summary
+# ============================================================================
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✨ Project update complete!"
+echo ""
+echo "Project name:     $NEW_NAME"
+echo "Addons found:     $ADDON_COUNT"
+echo ""
+echo "📝 Note: Addons are referenced from $OF_ROOT/addons"
+echo "   Make sure addons are cloned there before building."
+echo ""
+echo "🔨 Build commands:"
+echo "   make Debug        - Build debug version"
+echo "   make Release      - Build release version"
+echo "   make RunDebug     - Build and run debug"
+echo "   make RunRelease   - Build and run release"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
