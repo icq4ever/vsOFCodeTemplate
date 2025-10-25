@@ -23,7 +23,25 @@ Write-Host "📁 OF Root: $oFRoot" -ForegroundColor Green
 Write-Host ""
 
 # ============================================================================
-# 2. Find template files from emptyExample
+# 2. Remove old template project files if they exist
+# ============================================================================
+$oldFiles = @(
+    "vsOFCodeTemplate.vcxproj",
+    "vsOFCodeTemplate.vcxproj.filters",
+    "vsOFCodeTemplate.vcxproj.user",
+    "vsOFCodeTemplate.sln"
+)
+
+foreach ($oldFile in $oldFiles) {
+    $oldPath = Join-Path $projectDir $oldFile
+    if ((Test-Path $oldPath) -and ($oldFile -ne "$projectName.vcxproj") -and ($oldFile -ne "$projectName.vcxproj.filters") -and ($oldFile -ne "$projectName.sln")) {
+        Remove-Item $oldPath -Force
+        Write-Host "🗑️  Removed old file: $oldFile" -ForegroundColor Yellow
+    }
+}
+
+# ============================================================================
+# 3. Find template files from emptyExample
 # ============================================================================
 $emptyExampleDir = Join-Path $oFRoot "apps\myApps\emptyExample"
 $vcxprojTemplate = Join-Path $emptyExampleDir "emptyExample.vcxproj"
@@ -37,7 +55,7 @@ if (-not (Test-Path $vcxprojTemplate)) {
 }
 
 # ============================================================================
-# 3. Read addons from addons.make
+# 4. Read addons from addons.make
 # ============================================================================
 $addons = @()
 if (Test-Path $addonFile) {
@@ -122,7 +140,7 @@ Write-Host "   ✓ Total source files: $($allSourceFiles.Count)" -ForegroundColo
 Write-Host ""
 
 # ============================================================================
-# 5. Generate vcxproj from template
+# 6. Generate vcxproj from template
 # ============================================================================
 Write-Host "📝 Generating $projectName.vcxproj..." -ForegroundColor Cyan
 
@@ -227,7 +245,7 @@ $vcxproj.Save($vcxprojPath)
 Write-Host "   ✓ Saved $projectName.vcxproj" -ForegroundColor Green
 
 # ============================================================================
-# 6. Generate filters file
+# 7. Generate filters file
 # ============================================================================
 Write-Host "📝 Generating $projectName.vcxproj.filters..." -ForegroundColor Cyan
 
@@ -288,7 +306,7 @@ $filters.Save($filtersPath)
 Write-Host "   ✓ Saved $projectName.vcxproj.filters" -ForegroundColor Green
 
 # ============================================================================
-# 7. Generate solution file
+# 8. Generate solution file
 # ============================================================================
 Write-Host "📝 Generating $projectName.sln..." -ForegroundColor Cyan
 
