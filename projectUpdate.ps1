@@ -23,21 +23,29 @@ Write-Host "📁 OF Root: $oFRoot" -ForegroundColor Green
 Write-Host ""
 
 # ============================================================================
-# 2. Remove old template project files if they exist
+# 2. Remove old project files with different names
 # ============================================================================
-$oldFiles = @(
-    "vsOFCodeTemplate.vcxproj",
-    "vsOFCodeTemplate.vcxproj.filters",
-    "vsOFCodeTemplate.vcxproj.user",
-    "vsOFCodeTemplate.sln"
-)
+# Find all .vcxproj and .sln files that don't match current project name
+$oldVcxproj = Get-ChildItem $projectDir -Filter "*.vcxproj" | Where-Object {
+    $_.BaseName -ne $projectName -and $_.Name -notlike "*.filters" -and $_.Name -notlike "*.user"
+}
+$oldSln = Get-ChildItem $projectDir -Filter "*.sln" | Where-Object { $_.BaseName -ne $projectName }
+$oldFilters = Get-ChildItem $projectDir -Filter "*.vcxproj.filters" | Where-Object {
+    $_.Name -ne "$projectName.vcxproj.filters"
+}
+$oldUser = Get-ChildItem $projectDir -Filter "*.vcxproj.user" | Where-Object {
+    $_.Name -ne "$projectName.vcxproj.user"
+}
 
-foreach ($oldFile in $oldFiles) {
-    $oldPath = Join-Path $projectDir $oldFile
-    if ((Test-Path $oldPath) -and ($oldFile -ne "$projectName.vcxproj") -and ($oldFile -ne "$projectName.vcxproj.filters") -and ($oldFile -ne "$projectName.sln")) {
-        Remove-Item $oldPath -Force
-        Write-Host "🗑️  Removed old file: $oldFile" -ForegroundColor Yellow
+$filesToRemove = @($oldVcxproj) + @($oldSln) + @($oldFilters) + @($oldUser)
+
+if ($filesToRemove.Count -gt 0) {
+    Write-Host "🗑️  Removing old project files with different names:" -ForegroundColor Yellow
+    foreach ($file in $filesToRemove) {
+        Remove-Item $file.FullName -Force
+        Write-Host "   - $($file.Name)" -ForegroundColor Yellow
     }
+    Write-Host ""
 }
 
 # ============================================================================
