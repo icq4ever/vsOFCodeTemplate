@@ -47,12 +47,19 @@ $srcFiles = @()
 # Add src files
 $srcFiles += Get-ChildItem -Recurse -Include *.h,*.hpp,*.cpp,*.c -Path "$projectDir\src"
 
-# Add addon files from {OF_ROOT}/addons
+# Add addon files from {OF_ROOT}/addons (only src, include, libs folders)
 foreach ($addon in $addons) {
     $addonPath = Join-Path $oFRoot "addons\$addon"
     if (Test-Path $addonPath) {
-        $addonFiles = Get-ChildItem -Recurse -Include *.h,*.hpp,*.cpp,*.c -Path $addonPath
-        $srcFiles += $addonFiles
+        # Only scan specific directories: src, include, libs
+        $allowedDirs = @("src", "include", "libs")
+        foreach ($dir in $allowedDirs) {
+            $targetPath = Join-Path $addonPath $dir
+            if (Test-Path $targetPath) {
+                $addonFiles = Get-ChildItem -Recurse -Include *.h,*.hpp,*.cpp,*.c -Path $targetPath
+                $srcFiles += $addonFiles
+            }
+        }
     }
 }
 
@@ -74,10 +81,51 @@ foreach ($file in $srcFiles) {
     }
 }
 
+# Add AdditionalIncludeDirectories for addons
+$addonIncludeDirs = @()
+foreach ($addon in $addons) {
+    $addonIncludeDirs += "..\..\..\addons\$addon\src"
+
+    # Check if include and libs directories exist
+    $includeDir = Join-Path $oFRoot "addons\$addon\include"
+    $libsDir = Join-Path $oFRoot "addons\$addon\libs"
+
+    if (Test-Path $includeDir) {
+        $addonIncludeDirs += "..\..\..\addons\$addon\include"
+    }
+    if (Test-Path $libsDir) {
+        # Add all subdirectories under libs (e.g., libs/aruco/include)
+        $libSubDirs = Get-ChildItem -Directory -Path $libsDir -Recurse | Where-Object { $_.Name -match "^(include|src)$" }
+        foreach ($subDir in $libSubDirs) {
+            $relPath = $subDir.FullName.Replace("$oFRoot\", "..\..\..\").Replace("\", "/")
+            $addonIncludeDirs += $relPath
+        }
+    }
+}
+
+# Update ItemDefinitionGroup for both Debug and Release configurations
+$itemDefGroups = $projRoot.SelectNodes("//ns:ItemDefinitionGroup", $nsMgr)
+foreach ($defGroup in $itemDefGroups) {
+    $clCompile = $defGroup.SelectSingleNode("ns:ClCompile", $nsMgr)
+    if ($clCompile) {
+        $addIncDirs = $clCompile.SelectSingleNode("ns:AdditionalIncludeDirectories", $nsMgr)
+
+        if (-not $addIncDirs) {
+            $addIncDirs = $proj.CreateElement("AdditionalIncludeDirectories", $projRoot.NamespaceURI)
+            $clCompile.AppendChild($addIncDirs) | Out-Null
+        }
+
+        # Combine addon dirs with existing dirs
+        $existingDirs = if ($addIncDirs.InnerText) { $addIncDirs.InnerText } else { "%(AdditionalIncludeDirectories)" }
+        $newDirs = ($addonIncludeDirs -join ";") + ";" + $existingDirs
+        $addIncDirs.InnerText = $newDirs
+    }
+}
+
 $proj.Save($vcxprojPath)
 Write-Host "✅ Updated $vcxprojPath"
 
-# 3. Generate .filters file
+# Generate .filters file
 function Make-Filter {
     param($path)
     $parts = $path -split '[\\/]', 0, 'SimpleMatch'
