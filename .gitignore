@@ -23,6 +23,9 @@ bin/
 obj/
 build/
 
+# DLL files (keep folder structure, ignore .dll files)
+dll/**/*.dll
+
 # Local addons folder (addons are referenced from {OF_ROOT}/addons)
 addons/
 
@@ -51,3 +54,6 @@ Thumbs.db
 *.exe
 *.pdb
 *.ilk
+
+# DLL files (keep folder structure, ignore .dll files)
+dll/**/*.dll
