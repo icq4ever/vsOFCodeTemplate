@@ -23,15 +23,16 @@ Write-Host "📁 OF Root: $oFRoot" -ForegroundColor Green
 Write-Host ""
 
 # ============================================================================
-# 2. Check if template files exist
+# 2. Find template files from emptyExample
 # ============================================================================
-$templateDir = $PSScriptRoot
-$vcxprojTemplate = Join-Path $templateDir "vsOFCodeTemplate.vcxproj.template"
-$filtersTemplate = Join-Path $templateDir "vsOFCodeTemplate.vcxproj.filters.template"
-$slnTemplate = Join-Path $templateDir "vsOFCodeTemplate.sln.template"
+$emptyExampleDir = Join-Path $oFRoot "apps\myApps\emptyExample"
+$vcxprojTemplate = Join-Path $emptyExampleDir "emptyExample.vcxproj"
+$filtersTemplate = Join-Path $emptyExampleDir "emptyExample.vcxproj.filters"
+$slnTemplate = Join-Path $emptyExampleDir "emptyExample.sln"
 
 if (-not (Test-Path $vcxprojTemplate)) {
     Write-Host "❌ Template file not found: $vcxprojTemplate" -ForegroundColor Red
+    Write-Host "   Make sure emptyExample exists at: $emptyExampleDir" -ForegroundColor Red
     exit 1
 }
 
@@ -292,7 +293,7 @@ Write-Host "   ✓ Saved $projectName.vcxproj.filters" -ForegroundColor Green
 Write-Host "📝 Generating $projectName.sln..." -ForegroundColor Cyan
 
 $slnContent = Get-Content $slnTemplate -Raw
-$slnContent = $slnContent -replace "vsOFCodeTemplate", $projectName
+$slnContent = $slnContent -replace "emptyExample", $projectName
 
 # Add addon projects to solution
 if ($addonProjectRefs.Count -gt 0) {
