@@ -11,10 +11,7 @@ if (-not $OldProj) {
 }
 $OldName = [System.IO.Path]::GetFileNameWithoutExtension($OldProj.Name)
 
-if ($OldName -eq $NewName) {
-    Write-Host "✅ Project name already matches folder name. No update needed."
-    exit 0
-}
+if ($OldName -ne $NewName) {
 
 Write-Host "🔁 Renaming project: '$OldName' → '$NewName'"
 
@@ -97,10 +94,12 @@ Write-Host "✅ Project rename complete."
 Write-Host "   Old name: $OldName"
 Write-Host "   New name: $NewName"
 Write-Host ""
+}
 
 # ============================================================================
 # Auto-update vcxproj with source files from src/ folder
 # ============================================================================
+
 Write-Host "🔍 Scanning src/ folder for source files..."
 
 $vcxprojPath = ".\$NewName.vcxproj"
