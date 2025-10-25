@@ -83,7 +83,7 @@ Add to \`.bashrc\` or \`.zshrc\`:
 > **Note**: Replace \`templateDir\` with your template location
 > Project location should be \`{OF_ROOT}/{ANY}/{ANY}/{NEW_PROJECTNAME}\`
 
-\`\`\`bash
+```bash
 pg() {
   local newName="$1"
   local destDir="$(pwd)/$newName"
@@ -124,13 +124,13 @@ pg() {
 
 # PowerShell script aliases
 alias psh='powershell.exe -ExecutionPolicy Bypass -File'
-\`\`\`
+```
 
 #### for macOS / Linux
 Add to \`.bashrc\` or \`.zshrc\`:
 > **Note**: Replace \`templateDir\` with your template location
 
-\`\`\`bash
+```bash
 pg() {
   local newName="$1"
   local destDir="$(pwd)/$newName"
@@ -185,7 +185,7 @@ pg() {
 
   code .
 }
-\`\`\`
+```
 
 **What this script does:**
 - Clone template folder to new project directory
