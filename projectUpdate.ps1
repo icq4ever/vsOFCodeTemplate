@@ -15,6 +15,7 @@ $oFRoot = Resolve-Path "$projectDir\..\..\.."
 $vcxprojPath = Join-Path $projectDir "$projectName.vcxproj"
 $filtersPath = Join-Path $projectDir "$projectName.vcxproj.filters"
 $slnPath = Join-Path $projectDir "$projectName.sln"
+$userPath = Join-Path $projectDir "$projectName.vcxproj.user"
 $addonFile = Join-Path $projectDir "addons.make"
 
 Write-Host "📁 Project: $projectName" -ForegroundColor Green
@@ -49,15 +50,43 @@ if ($filesToRemove.Count -gt 0) {
 }
 
 # ============================================================================
-# 3. Find template files from emptyExample
+# 3. Check if project files exist (migration mode detection)
+# ============================================================================
+$existingVcxproj = Test-Path $vcxprojPath
+$existingSln = Test-Path $slnPath
+$existingUser = Test-Path $userPath
+
+if (-not $existingVcxproj -or -not $existingSln -or -not $existingUser) {
+    Write-Host "🔄 Migration mode: Missing project files detected" -ForegroundColor Yellow
+    if (-not $existingVcxproj) {
+        Write-Host "   - $projectName.vcxproj not found (will create)" -ForegroundColor Yellow
+    }
+    if (-not $existingSln) {
+        Write-Host "   - $projectName.sln not found (will create)" -ForegroundColor Yellow
+    }
+    if (-not $existingUser) {
+        Write-Host "   - $projectName.vcxproj.user not found (will create)" -ForegroundColor Yellow
+    }
+    Write-Host ""
+}
+
+# ============================================================================
+# 4. Find template files from emptyExample or current project
 # ============================================================================
 $emptyExampleDir = Join-Path $oFRoot "apps\myApps\emptyExample"
-$vcxprojTemplate = Join-Path $emptyExampleDir "emptyExample.vcxproj"
+$vcxprojTemplate = if ($existingVcxproj) { $vcxprojPath } else { Join-Path $emptyExampleDir "emptyExample.vcxproj" }
 $filtersTemplate = Join-Path $emptyExampleDir "emptyExample.vcxproj.filters"
-$slnTemplate = Join-Path $emptyExampleDir "emptyExample.sln"
+$slnTemplate = if ($existingSln) { $slnPath } else { Join-Path $emptyExampleDir "emptyExample.sln" }
+$userTemplate = Join-Path $emptyExampleDir "emptyExample.vcxproj.user"
 
 if (-not (Test-Path $vcxprojTemplate)) {
     Write-Host "❌ Template file not found: $vcxprojTemplate" -ForegroundColor Red
+    Write-Host "   Make sure emptyExample exists at: $emptyExampleDir" -ForegroundColor Red
+    exit 1
+}
+
+if (-not (Test-Path $userTemplate)) {
+    Write-Host "❌ Template file not found: $userTemplate" -ForegroundColor Red
     Write-Host "   Make sure emptyExample exists at: $emptyExampleDir" -ForegroundColor Red
     exit 1
 }
@@ -347,6 +376,18 @@ if ($addonProjectRefs.Count -gt 0) {
 
 Set-Content -Path $slnPath -Value $slnContent -Encoding UTF8
 Write-Host "   ✓ Saved $projectName.sln" -ForegroundColor Green
+
+# ============================================================================
+# 9. Generate .vcxproj.user file (if missing)
+# ============================================================================
+if (-not $existingUser) {
+    Write-Host "📝 Creating $projectName.vcxproj.user..." -ForegroundColor Cyan
+
+    $userContent = Get-Content $userTemplate -Raw
+    # No substitution needed - it's generic
+    Set-Content -Path $userPath -Value $userContent -Encoding UTF8
+    Write-Host "   ✓ Saved $projectName.vcxproj.user" -ForegroundColor Green
+}
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
