@@ -6,39 +6,19 @@ $projectName = Split-Path $projectDir -Leaf
 $vcxprojPath = Join-Path $projectDir "$projectName.vcxproj"
 $filtersPath = Join-Path $projectDir "$projectName.vcxproj.filters"
 $addonFile = Join-Path $projectDir "addons.make"
-$addonDest = Join-Path $projectDir "addons"
 $cppPropsPath = Join-Path $projectDir ".vscode\c_cpp_properties.json"
 
 # Determine openFrameworks root
 $oFRoot = Resolve-Path "$projectDir\..\..\.."
 
-# 0. Clean up outdated addons
-if (Test-Path $addonDest) {
-    $existingAddons = Get-ChildItem -Directory $addonDest | Select-Object -ExpandProperty Name
-    $usedAddons = Get-Content $addonFile | Where-Object { $_ -and -not $_.StartsWith("#") } | ForEach-Object { Split-Path $_ -Leaf }
-
-    $addonsToRemove = $existingAddons | Where-Object { $_ -notin $usedAddons }
-    foreach ($unused in $addonsToRemove) {
-        $unusedPath = Join-Path $addonDest $unused
-        Write-Host "🧹 Removing unused addon: $unused"
-        Remove-Item -Recurse -Force $unusedPath
-    }
-}
-
-# 1. Copy addons
+# Read addons from addons.make
+$addons = @()
 if (Test-Path $addonFile) {
     $addons = Get-Content $addonFile | Where-Object { $_ -and -not $_.StartsWith("#") }
-    foreach ($addon in $addons) {
-        $src = Join-Path $oFRoot "addons\$addon"
-        $dst = Join-Path $addonDest (Split-Path $addon -Leaf)
-        if (-not (Test-Path $dst)) {
-            Write-Host "📦 Copying addon: $addon"
-            Copy-Item -Recurse -Force $src $dst
-        }
-    }
+    Write-Host "📦 Found addons: $($addons -join ', ')"
 }
 
-# 2. Update .vcxproj (remove old, add new)
+# Update .vcxproj (remove old, add new)
 [xml]$proj = Get-Content $vcxprojPath
 $projRoot = $proj.Project
 
@@ -61,9 +41,32 @@ function Add-ItemGroupEntry {
     $projRoot.AppendChild($group) | Out-Null
 }
 
-$srcFiles = Get-ChildItem -Recurse -Include *.h,*.hpp,*.cpp,*.c -Path "$projectDir\src", "$projectDir\addons"
+# Collect all source files
+$srcFiles = @()
+
+# Add src files
+$srcFiles += Get-ChildItem -Recurse -Include *.h,*.hpp,*.cpp,*.c -Path "$projectDir\src"
+
+# Add addon files from {OF_ROOT}/addons
+foreach ($addon in $addons) {
+    $addonPath = Join-Path $oFRoot "addons\$addon"
+    if (Test-Path $addonPath) {
+        $addonFiles = Get-ChildItem -Recurse -Include *.h,*.hpp,*.cpp,*.c -Path $addonPath
+        $srcFiles += $addonFiles
+    }
+}
+
+# Add files to vcxproj
 foreach ($file in $srcFiles) {
-    $relPath = $file.FullName.Replace("$projectDir\", "").Replace("\", "/")
+    # Use relative path from project directory
+    if ($file.FullName.StartsWith("$projectDir\")) {
+        # Files in src/
+        $relPath = $file.FullName.Replace("$projectDir\", "").Replace("\", "/")
+    } else {
+        # Files in {OF_ROOT}/addons - use relative path
+        $relPath = $file.FullName.Replace("$oFRoot\", "..\..\..\").Replace("\", "/")
+    }
+
     if ($file.Extension -match "\.h|\.hpp") {
         Add-ItemGroupEntry -type "ClInclude" -relativePath $relPath
     } else {
@@ -111,12 +114,13 @@ $filtersXml += "  </ItemGroup>`n</Project>"
 Set-Content -Path $filtersPath -Value $filtersXml -Encoding UTF8
 Write-Host "✅ Generated $filtersPath"
 
-# 4. Update c_cpp_properties.json for includePath
+# Update c_cpp_properties.json for includePath
 $includePaths = @(
     "`${workspaceFolder}/src",
     "`${workspaceFolder}/src/**",
-    "`${workspaceFolder}/addons/*/src",
-    "`${workspaceFolder}/addons/*/include",
+    "`${workspaceFolder}/../../../addons/*/src",
+    "`${workspaceFolder}/../../../addons/*/include",
+    "`${workspaceFolder}/../../../addons/**/src",
     "`${workspaceFolder}/../../../libs/openFrameworks/**",
     "`${workspaceFolder}/../../../libs/**/include"
 )

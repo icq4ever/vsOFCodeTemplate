@@ -1,5 +1,6 @@
 # Ignore everything inside .vscode
 .vscode/*
+.claude/
 
 # But keep shared build settings
 !.vscode/tasks.json
@@ -21,6 +22,9 @@
 bin/
 obj/
 build/
+
+# Local addons folder (addons are referenced from {OF_ROOT}/addons)
+addons/
 
 # Visual Studio cache
 ipch/
