@@ -148,9 +148,9 @@ Write-Host "   ✓ Total source files: $($allSourceFiles.Count)" -ForegroundColo
 Write-Host ""
 
 # ============================================================================
-# 6. Generate vcxproj from template
+# 6. Generate vcxproj from template (overwrites existing file)
 # ============================================================================
-Write-Host "📝 Generating $projectName.vcxproj..." -ForegroundColor Cyan
+Write-Host "📝 Regenerating $projectName.vcxproj from template..." -ForegroundColor Cyan
 
 # Load template
 [xml]$vcxproj = Get-Content $vcxprojTemplate
@@ -255,7 +255,7 @@ Write-Host "   ✓ Saved $projectName.vcxproj" -ForegroundColor Green
 # ============================================================================
 # 7. Generate filters file
 # ============================================================================
-Write-Host "📝 Generating $projectName.vcxproj.filters..." -ForegroundColor Cyan
+Write-Host "📝 Regenerating $projectName.vcxproj.filters..." -ForegroundColor Cyan
 
 function Get-FilterPath {
     param($path)
@@ -316,7 +316,7 @@ Write-Host "   ✓ Saved $projectName.vcxproj.filters" -ForegroundColor Green
 # ============================================================================
 # 8. Generate solution file
 # ============================================================================
-Write-Host "📝 Generating $projectName.sln..." -ForegroundColor Cyan
+Write-Host "📝 Regenerating $projectName.sln..." -ForegroundColor Cyan
 
 $slnContent = Get-Content $slnTemplate -Raw
 $slnContent = $slnContent -replace "emptyExample", $projectName
