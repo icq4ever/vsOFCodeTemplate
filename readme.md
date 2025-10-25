@@ -13,19 +13,20 @@ this template is include :
 - visual studio is too heavy
 
 ## feature
-- support vcxproj update (Windows)
-- **auto-scan and add new source files** to vcxproj (Windows only)
-  - when you run `projectUpdate.ps1`, it scans `src/` folder and adds all `.cpp` and `.h` files to vcxproj
-  - macOS/Linux don't need this - Makefile auto-detects source files
+- **unified project update script** - single command updates everything
+  - renames project files to match folder name
+  - scans and adds source files from `src/` (Windows)
+  - reads `addons.make` and configures addon references
+  - generates vcxproj, filters, and sln from official templates (Windows)
+  - configures VSCode IntelliSense for all platforms
 - addon support (references addons directly from `{OF_ROOT}/addons`)
   - no local copying - addons are referenced from the shared location
   - saves disk space and makes addon updates easier
-- addonUpdate / projectUpdate scripts:
-  - **Windows**: `addonUpdate.ps1`, `projectUpdate.ps1` (PowerShell)
-  - **macOS/Linux**: `addonUpdate.sh`, `projectUpdate.sh` (Bash)
-- cross-platform build support:
-  - **Windows**: MSBuild via Visual Studio tasks
-  - **macOS/Linux**: `make Debug`, `make Release`, `make RunDebug`, `make RunRelease`
+  - addons must be cloned to `{OF_ROOT}/addons` before building
+- cross-platform support:
+  - **Windows**: `projectUpdate.ps1` (PowerShell) + MSBuild
+  - **macOS/Linux**: `projectUpdate.sh` (Bash) + Makefile
+  - macOS/Linux Makefile auto-detects source files (no manual vcxproj)
 
 ## dependencies
 ### vscode
@@ -53,24 +54,29 @@ this template is include :
 ## how to use it
 
 ### Windows
-1. clone this repo : \`{OF_ROOT}/apps/myApps/vsOFCodeTemplate\`
-2. copy to new folder
-3. run \`projectUpdate.ps1\` (PowerShell) or use VSCode task
-   - this will rename project files and **auto-add all source files** from \`src/\` to vcxproj
-4. when you add new \`.cpp\` or \`.h\` files, just run \`projectUpdate.ps1\` again to update vcxproj
-5. when addon added on \`addons.make\`, run \`addonUpdate.ps1\` or use VSCode task
-   - **addon must be cloned to \`{OF_ROOT}/addons\` first**
-   - addons are referenced directly from \`{OF_ROOT}/addons\` (not copied)
-6. build project with VSCode tasks
+1. clone this repo to \`{OF_ROOT}/apps/myApps/vsOFCodeTemplate\`
+2. copy template folder to new project location
+3. add addons to \`addons.make\` if needed
+   - **addons must be cloned to \`{OF_ROOT}/addons\` first**
+4. run \`projectUpdate.ps1\` (PowerShell) or use VSCode task
+   - renames project to match folder name
+   - scans `src/` and adds all source files to vcxproj
+   - reads `addons.make` and configures addon references
+   - generates vcxproj, filters, and sln from templates
+5. when you add new files or addons, just run \`projectUpdate.ps1\` again
+6. build with VSCode tasks or MSBuild
 
 ### macOS/Linux
-1. clone this repo : \`{OF_ROOT}/apps/myApps/vsOFCodeTemplate\`
-2. copy to new folder
-3. run \`./projectUpdate.sh\` in terminal
-4. when addon added on \`addons.make\`, run \`./addonUpdate.sh\`
-   - **addon must be cloned to \`{OF_ROOT}/addons\` first**
-   - addons are referenced directly from \`{OF_ROOT}/addons\` (not copied)
-5. build project with \`make Debug\` or \`make Release\`
+1. clone this repo to \`{OF_ROOT}/apps/myApps/vsOFCodeTemplate\`
+2. copy template folder to new project location
+3. add addons to \`addons.make\` if needed
+   - **addons must be cloned to \`{OF_ROOT}/addons\` first**
+4. run \`./projectUpdate.sh\` in terminal
+   - renames project to match folder name
+   - configures VSCode IntelliSense for addons
+5. when you add addons, run \`./projectUpdate.sh\` again
+6. build with \`make Debug\` or \`make Release\`
+   - Makefile auto-detects source files in `src/`
 
 ## extra tip
 
@@ -163,9 +169,9 @@ pg() {
   cd "$destDir" || return 1
 
   # fix line endings (convert CRLF to LF) and make executable
-  sed -i 's/\\r$//' projectUpdate.sh addonUpdate.sh 2>/dev/null || \\
-    sed -i '' 's/\\r$//' projectUpdate.sh addonUpdate.sh 2>/dev/null
-  chmod +x projectUpdate.sh addonUpdate.sh
+  sed -i 's/\\r$//' projectUpdate.sh 2>/dev/null || \\
+    sed -i '' 's/\\r$//' projectUpdate.sh 2>/dev/null
+  chmod +x projectUpdate.sh
 
   # run the update script
   if ./projectUpdate.sh; then
@@ -176,7 +182,7 @@ pg() {
     echo "Next steps:"
     echo "  1. cd $newName"
     echo "  2. Add addons to addons.make if needed"
-    echo "  3. Run ./addonUpdate.sh to update addon references"
+    echo "  3. Run ./projectUpdate.sh again if you add addons"
     echo "  4. Build with 'make Debug' or 'make Release'"
   else
     echo "❌ Error: projectUpdate.sh failed"
@@ -189,7 +195,7 @@ pg() {
 
 **What this script does:**
 - Clone template folder to new project directory
-- Exclude build artifacts and IDE-specific files
+- Exclude build artifacts and IDE-specific files (`.git/`, `.claude/`, `bin/`, `obj/`, etc.)
 - Reset README.md with project name
-- Run appropriate update script (\`.ps1\` for Windows, \`.sh\` for macOS/Linux)
+- Run unified `projectUpdate` script to configure project
 - (WSL only) Open project in VSCode
