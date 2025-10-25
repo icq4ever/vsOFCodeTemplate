@@ -113,15 +113,25 @@ Write-Host "✅ Generated $filtersPath"
 
 # 4. Update c_cpp_properties.json for includePath
 $includePaths = @(
-    "src",
-    "addons/*/src",
-    "../../libs/**/include",
-    "../../addons/**/src"
+    "`${workspaceFolder}/src",
+    "`${workspaceFolder}/src/**",
+    "`${workspaceFolder}/addons/*/src",
+    "`${workspaceFolder}/addons/*/include",
+    "`${workspaceFolder}/../../../libs/openFrameworks/**",
+    "`${workspaceFolder}/../../../libs/**/include"
 )
 
-$cppJson = @{
-    configurations = @(
-        @{
+# Load existing configuration or create new one
+if (Test-Path $cppPropsPath) {
+    $cppJson = Get-Content $cppPropsPath -Raw | ConvertFrom-Json
+
+    # Find and update Win64 configuration
+    $win64Config = $cppJson.configurations | Where-Object { $_.name -eq "Win64" }
+    if ($win64Config) {
+        $win64Config.includePath = $includePaths
+    } else {
+        # Add Win64 configuration if it doesn't exist
+        $newWin64Config = @{
             name = "Win64"
             includePath = $includePaths
             defines = @()
@@ -130,9 +140,26 @@ $cppJson = @{
             cppStandard = "c++17"
             intelliSenseMode = "windows-msvc-x64"
         }
-    )
-    version = 4
+        $cppJson.configurations += $newWin64Config
+    }
+} else {
+    # Create new configuration file
+    $cppJson = @{
+        version = 4
+        configurations = @(
+            @{
+                name = "Win64"
+                includePath = $includePaths
+                defines = @()
+                compilerPath = "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe"
+                cStandard = "c17"
+                cppStandard = "c++17"
+                intelliSenseMode = "windows-msvc-x64"
+            }
+        )
+    }
 }
 
+# Save with 2-space indentation
 $cppJson | ConvertTo-Json -Depth 5 | Set-Content $cppPropsPath -Encoding UTF8
 Write-Host "✅ Updated $cppPropsPath"

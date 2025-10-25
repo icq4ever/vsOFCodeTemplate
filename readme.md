@@ -107,6 +107,7 @@ pg() {
             --exclude='*.suo' \
             --exclude='.vscode/ipch/' \
             --exclude='.git/' \
+            --exclude='.claude/' \
             "$templateDir/" "$destDir/"
 
   # create README.md with project name as heading
@@ -151,6 +152,7 @@ pg() {
             --exclude='*.xcodeproj/project.xcworkspace/' \
             --exclude='.vscode/ipch/' \
             --exclude='.git/' \
+            --exclude='.claude/' \
             "$templateDir/" "$destDir/"
 
   # create README.md with project name as heading
