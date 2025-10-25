@@ -134,9 +134,10 @@ if (-not $includeGroup) {
     $vcxproj.Project.AppendChild($includeGroup) | Out-Null
 }
 
-# Get existing files in vcxproj
-$existingCppFiles = @($compileGroup.ClCompile | ForEach-Object { $_.Include })
-$existingHFiles = @($includeGroup.ClInclude | ForEach-Object { $_.Include })
+# Get existing files in vcxproj (from ALL ItemGroups)
+$allItemGroups = $vcxproj.Project.ItemGroup
+$existingCppFiles = @($allItemGroups | ForEach-Object { $_.ClCompile } | ForEach-Object { $_.Include })
+$existingHFiles = @($allItemGroups | ForEach-Object { $_.ClInclude } | ForEach-Object { $_.Include })
 
 # Add new .cpp files
 $addedCpp = 0

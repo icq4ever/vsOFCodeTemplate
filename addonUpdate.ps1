@@ -31,15 +31,9 @@ foreach ($node in $oldNodes) {
     $projRoot.RemoveChild($node) | Out-Null
 }
 
-# Add new files from src and addons
-function Add-ItemGroupEntry {
-    param($type, $relativePath)
-    $group = $proj.CreateElement("ItemGroup", $projRoot.NamespaceURI)
-    $item = $proj.CreateElement($type, $projRoot.NamespaceURI)
-    $item.SetAttribute("Include", $relativePath)
-    $group.AppendChild($item) | Out-Null
-    $projRoot.AppendChild($group) | Out-Null
-}
+# Create single ItemGroups for ClInclude and ClCompile
+$includeGroup = $proj.CreateElement("ItemGroup", $projRoot.NamespaceURI)
+$compileGroup = $proj.CreateElement("ItemGroup", $projRoot.NamespaceURI)
 
 # Collect all source files
 $srcFiles = @()
@@ -63,7 +57,8 @@ foreach ($addon in $addons) {
     }
 }
 
-# Add files to vcxproj
+# Add files to ItemGroups (deduplication)
+$addedFiles = @{}
 foreach ($file in $srcFiles) {
     # Use relative path from project directory
     if ($file.FullName.StartsWith("$projectDir\")) {
@@ -74,13 +69,30 @@ foreach ($file in $srcFiles) {
         $relPath = $file.FullName.Replace("$oFRoot\", "..\..\..\").Replace("\", "/")
     }
 
+    # Skip if already added (deduplication)
+    if ($addedFiles.ContainsKey($relPath)) {
+        continue
+    }
+    $addedFiles[$relPath] = $true
+
     if ($file.Extension -match "\.h|\.hpp") {
-        Add-ItemGroupEntry -type "ClInclude" -relativePath $relPath
+        $item = $proj.CreateElement("ClInclude", $projRoot.NamespaceURI)
+        $item.SetAttribute("Include", $relPath)
+        $includeGroup.AppendChild($item) | Out-Null
     } else {
-        Add-ItemGroupEntry -type "ClCompile" -relativePath $relPath
+        $item = $proj.CreateElement("ClCompile", $projRoot.NamespaceURI)
+        $item.SetAttribute("Include", $relPath)
+        $compileGroup.AppendChild($item) | Out-Null
     }
 }
 
+# Append ItemGroups to project (only if not empty)
+if ($includeGroup.ChildNodes.Count -gt 0) {
+    $projRoot.AppendChild($includeGroup) | Out-Null
+}
+if ($compileGroup.ChildNodes.Count -gt 0) {
+    $projRoot.AppendChild($compileGroup) | Out-Null
+}
 # Add AdditionalIncludeDirectories for addons
 $addonIncludeDirs = @()
 foreach ($addon in $addons) {
