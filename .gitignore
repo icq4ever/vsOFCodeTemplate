@@ -1,7 +1,7 @@
 # Ignore everything inside .vscode
 .vscode/*
 .claude/
-
+.vs/
 # But keep shared build settings
 !.vscode/tasks.json
 !.vscode/launch.json
