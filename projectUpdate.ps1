@@ -57,13 +57,17 @@ if (Test-Path $OldSln) {
         $vcxprojGuid = "{$($matches[1])}"
     }
 
+    $ofLibGuid = "{5837595D-ACA9-485C-8E76-729040CE4B0B}"
+
     $slnContent = @"
 
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "$NewName", "$NewName.vcxproj", "$vcxprojGuid"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "openframeworksLib", "..\..\..\libs\openFrameworksCompiled\project\vs\openframeworksLib.vcxproj", "$ofLibGuid"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -75,6 +79,10 @@ Global
 		$vcxprojGuid.Debug|x64.Build.0 = Debug|x64
 		$vcxprojGuid.Release|x64.ActiveCfg = Release|x64
 		$vcxprojGuid.Release|x64.Build.0 = Release|x64
+		$ofLibGuid.Debug|x64.ActiveCfg = Debug|x64
+		$ofLibGuid.Debug|x64.Build.0 = Debug|x64
+		$ofLibGuid.Release|x64.ActiveCfg = Release|x64
+		$ofLibGuid.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -84,9 +92,6 @@ Global
 	EndGlobalSection
 EndGlobal
 "@
-
-    Set-Content $NewSln $slnContent
-    Write-Host "✅ Created new solution file: $NewSln"
 }
 
 Write-Host ""

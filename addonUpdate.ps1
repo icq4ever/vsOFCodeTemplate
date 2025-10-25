@@ -227,3 +227,89 @@ if (Test-Path $cppPropsPath) {
 # Save with 2-space indentation
 $cppJson | ConvertTo-Json -Depth 5 | Set-Content $cppPropsPath -Encoding UTF8
 Write-Host "✅ Updated $cppPropsPath"
+
+# Update .sln file to include addon projects
+$slnPath = Join-Path $projectDir "$projectName.sln"
+if (Test-Path $slnPath) {
+    Write-Host ""
+    Write-Host "🔍 Updating solution file with addon projects..."
+
+    # Read current .sln content
+    $slnContent = Get-Content $slnPath -Raw
+
+    # Find addon vcxproj files
+    $addonProjects = @()
+    foreach ($addon in $addons) {
+        $addonPath = Join-Path $oFRoot "addons\$addon"
+        if (Test-Path $addonPath) {
+            # Look for .vcxproj files in addon directory
+            $vcxprojFiles = Get-ChildItem -Path $addonPath -Filter "*.vcxproj" -Recurse | Where-Object {
+                # Exclude example/test/sample folders
+                $_.FullName -notmatch '\\(example|examples|test|tests|sample|samples|demo|demos)\\'
+            }
+
+            foreach ($vcxproj in $vcxprojFiles) {
+                # Extract GUID from vcxproj
+                $vcxprojContent = Get-Content $vcxproj.FullName -Raw
+                if ($vcxprojContent -match '<ProjectGuid>\{([^}]+)\}</ProjectGuid>') {
+                    $guid = "{$($matches[1])}"
+                    $projName = [System.IO.Path]::GetFileNameWithoutExtension($vcxproj.Name)
+                    $relPath = $vcxproj.FullName.Replace("$oFRoot\", "..\..\..\").Replace("\", "\")
+
+                    # Check if project already exists in solution
+                    if ($slnContent -notmatch [regex]::Escape($guid)) {
+                        $addonProjects += @{
+                            Name = $projName
+                            Guid = $guid
+                            Path = $relPath
+                        }
+                        Write-Host "  📦 Found addon project: $projName"
+                    }
+                }
+            }
+        }
+    }
+
+    if ($addonProjects.Count -gt 0) {
+        # Find insertion point (after last Project line, before Global)
+        $projectPattern = '(?m)^EndProject\r?\n'
+        $matches = [regex]::Matches($slnContent, $projectPattern)
+        if ($matches.Count -gt 0) {
+            $lastProjectEnd = $matches[$matches.Count - 1].Index + $matches[$matches.Count - 1].Length
+
+            # Build new project entries
+            $newProjectEntries = ""
+            foreach ($proj in $addonProjects) {
+                $newProjectEntries += "Project(""{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}"") = ""$($proj.Name)"", ""$($proj.Path)"", ""$($proj.Guid)""
+EndProject
+"
+            }
+
+            # Insert new projects
+            $slnContent = $slnContent.Insert($lastProjectEnd, $newProjectEntries)
+
+            # Add configuration entries for new projects
+            $configPattern = '(?m)^\t\tGlobalSection\(SolutionProperties\)'
+            if ($slnContent -match $configPattern) {
+                $configInsertPoint = $slnContent.IndexOf($matches[0].Value)
+
+                $newConfigEntries = ""
+                foreach ($proj in $addonProjects) {
+                    $newConfigEntries += "`t`t$($proj.Guid).Debug|x64.ActiveCfg = Debug|x64
+`t`t$($proj.Guid).Debug|x64.Build.0 = Debug|x64
+`t`t$($proj.Guid).Release|x64.ActiveCfg = Release|x64
+`t`t$($proj.Guid).Release|x64.Build.0 = Release|x64
+"
+                }
+
+                $slnContent = $slnContent.Insert($configInsertPoint, $newConfigEntries)
+            }
+
+            # Save updated .sln
+            Set-Content -Path $slnPath -Value $slnContent -Encoding UTF8
+            Write-Host "✅ Added $($addonProjects.Count) addon project(s) to solution"
+        }
+    } else {
+        Write-Host "✓ No new addon projects to add to solution"
+    }
+}
