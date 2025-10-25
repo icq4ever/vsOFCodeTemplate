@@ -389,6 +389,33 @@ if (-not $existingUser) {
     Write-Host "   ✓ Saved $projectName.vcxproj.user" -ForegroundColor Green
 }
 
+# ============================================================================
+# 10. Create dll folder structure (if missing)
+# ============================================================================
+$dllFolders = @("dll\x64", "dll\ARM64", "dll\ARM64EC")
+$missingDllFolders = @()
+
+foreach ($folder in $dllFolders) {
+    $folderPath = Join-Path $projectDir $folder
+    if (-not (Test-Path $folderPath)) {
+        $missingDllFolders += $folder
+    }
+}
+
+if ($missingDllFolders.Count -gt 0) {
+    Write-Host "📁 Creating dll folder structure..." -ForegroundColor Cyan
+    foreach ($folder in $missingDllFolders) {
+        $folderPath = Join-Path $projectDir $folder
+        New-Item -ItemType Directory -Path $folderPath -Force | Out-Null
+
+        # Create .gitkeep to preserve folder in git
+        $gitkeepPath = Join-Path $folderPath ".gitkeep"
+        New-Item -ItemType File -Path $gitkeepPath -Force | Out-Null
+
+        Write-Host "   ✓ Created $folder\" -ForegroundColor Green
+    }
+}
+
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "  ✅ Project update complete!" -ForegroundColor Green
