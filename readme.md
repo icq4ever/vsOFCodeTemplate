@@ -88,6 +88,9 @@ Add this function to your shell configuration file to quickly create new project
 Add to \`.bashrc\` or \`.zshrc\`:
 > **Note**: Replace \`templateDir\` with your template location
 > Project location should be \`{OF_ROOT}/{ANY}/{ANY}/{NEW_PROJECTNAME}\`
+>
+> **⚠️ IMPORTANT**: When copying this code, use **single backslashes** (\`\\\`) for line continuation.
+> Do NOT copy double backslashes (\`\\\\\`) - they are only for markdown rendering.
 
 ```bash
 pg() {
@@ -106,22 +109,22 @@ pg() {
   fi
 
   # rsync with exclusion rules
-  rsync -av --exclude='bin/*.exe' \\
-            --exclude='bin/*.dll' \\
-            --exclude='obj/' \\
-            --exclude='.vs/' \\
-            --exclude='*.user' \\
-            --exclude='*.suo' \\
-            --exclude='.vscode/ipch/' \\
-            --exclude='.git/' \\
-            --exclude='.claude/' \\
+  rsync -av --exclude='bin/*.exe' \
+            --exclude='bin/*.dll' \
+            --exclude='obj/' \
+            --exclude='.vs/' \
+            --exclude='*.user' \
+            --exclude='*.suo' \
+            --exclude='.vscode/ipch/' \
+            --exclude='.git/' \
+            --exclude='.claude/' \
             "$templateDir/" "$destDir/"
 
   # create README.md with project name as heading
   echo "# $newName" > "$destDir/README.md"
 
   # run PowerShell project update
-  cd "$destDir" && \\
+  cd "$destDir" && \
   powershell.exe -ExecutionPolicy Bypass -File "$(wslpath -w "$destDir/projectUpdate.ps1")"
 
   # open in VSCode
@@ -135,6 +138,9 @@ alias psh='powershell.exe -ExecutionPolicy Bypass -File'
 #### for macOS / Linux
 Add to \`.bashrc\` or \`.zshrc\`:
 > **Note**: Replace \`templateDir\` with your template location
+>
+> **⚠️ IMPORTANT**: When copying this code, use **single backslashes** (\`\\\`) for line continuation.
+> Do NOT copy double backslashes (\`\\\\\`) - they are only for markdown rendering.
 
 ```bash
 pg() {
@@ -153,13 +159,13 @@ pg() {
   fi
 
   # rsync with exclusion rules
-  rsync -av --exclude='bin/' \\
-            --exclude='obj/' \\
-            --exclude='*.xcodeproj/xcuserdata/' \\
-            --exclude='*.xcodeproj/project.xcworkspace/' \\
-            --exclude='.vscode/ipch/' \\
-            --exclude='.git/' \\
-            --exclude='.claude/' \\
+  rsync -av --exclude='bin/' \
+            --exclude='obj/' \
+            --exclude='*.xcodeproj/xcuserdata/' \
+            --exclude='*.xcodeproj/project.xcworkspace/' \
+            --exclude='.vscode/ipch/' \
+            --exclude='.git/' \
+            --exclude='.claude/' \
             "$templateDir/" "$destDir/"
 
   # create README.md with project name as heading
@@ -169,8 +175,8 @@ pg() {
   cd "$destDir" || return 1
 
   # fix line endings (convert CRLF to LF) and make executable
-  sed -i 's/\\r$//' projectUpdate.sh 2>/dev/null || \\
-    sed -i '' 's/\\r$//' projectUpdate.sh 2>/dev/null
+  sed -i 's/\r$//' projectUpdate.sh 2>/dev/null || \
+    sed -i '' 's/\r$//' projectUpdate.sh 2>/dev/null
   chmod +x projectUpdate.sh
 
   # run the update script
